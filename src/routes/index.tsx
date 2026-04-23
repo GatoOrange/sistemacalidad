@@ -50,6 +50,8 @@ type Inputs = {
   densidad: string;
   viscosidad: string;
   humedad: string;
+  color: string;   // id del color de materia prima
+  aspecto: string; // 'limpio' | 'turbio'
   // Química
   acidez: string;
   saponificacion: string;
@@ -80,6 +82,8 @@ const initialInputs: Inputs = {
   densidad: "",
   viscosidad: "",
   humedad: "",
+  color: "",
+  aspecto: "",
   acidez: "",
   saponificacion: "",
   peroxidos: "",
@@ -87,6 +91,14 @@ const initialInputs: Inputs = {
   catalizador: "",
   temperatura: "",
 };
+
+type ColorOpt = { id: string; label: string; hex: string; warn?: boolean };
+const COLOR_OPTIONS: ColorOpt[] = [
+  { id: "amarillo", label: "Amarillo Claro (Refinado)", hex: "#F4E27A" },
+  { id: "ambar", label: "Ámbar/Dorado (Crudo buena calidad)", hex: "#C98A2B" },
+  { id: "marron", label: "Marrón Oscuro (Usado/Degradado)", hex: "#3E2410", warn: true },
+  { id: "rojizo", label: "Rojizo (Pigmentos/Sobrecalentado)", hex: "#8A2A1E" },
+];
 
 function Dashboard() {
   const navigate = useNavigate();
