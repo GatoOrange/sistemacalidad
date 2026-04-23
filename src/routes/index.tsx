@@ -505,6 +505,24 @@ function Dashboard() {
                   </div>
                 )}
 
+                {alertaVisual && (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-semibold">Pre-tratamiento Recomendado</p>
+                      <p className="text-muted-foreground mt-1">
+                        {inputs.color === "marron" && "Color marrón oscuro detectado. "}
+                        {inputs.aspecto === "turbio" && "Aspecto turbio o con sedimentos. "}
+                        Se recomienda <strong>filtración</strong> y/o <strong>refinación adicional</strong>
+                        antes de la transesterificación.
+                      </p>
+                      <p className="text-xs text-muted-foreground italic mt-2">
+                        El color oscuro suele estar asociado a un alto contenido de compuestos polares o polimerización.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Reporte agrupado */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
