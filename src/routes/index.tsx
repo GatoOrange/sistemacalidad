@@ -57,6 +57,8 @@ const LIMITS = {
 };
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
   const [dark, setDark] = useState(true);
   const [inputs, setInputs] = useState<Inputs>({
     acidez: "",
@@ -65,6 +67,16 @@ function Dashboard() {
     pureza: "",
   });
   const [submitted, setSubmitted] = useState(false);
+
+  // Auth guard: redirige a /login si no está autenticado
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("isLoggedIn") !== "true") {
+      navigate({ to: "/login" });
+    } else {
+      setAuthChecked(true);
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
