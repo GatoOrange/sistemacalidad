@@ -178,11 +178,12 @@ function Dashboard() {
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     if (!allValid) {
-      setError("Todos los campos críticos deben contener datos numéricos válidos.");
+      setError("Completa todos los campos (incluye color y aspecto visual).");
       // Saltar a la primera pestaña que tenga campo vacío
-      const fisicaIncompleta = ["densidad", "viscosidad", "humedad"].some(
-        (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
-      );
+      const fisicaIncompleta =
+        ["densidad", "viscosidad", "humedad"].some(
+          (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
+        ) || !inputs.color || !inputs.aspecto;
       const quimicaIncompleta = ["acidez", "saponificacion", "peroxidos"].some(
         (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
       );
