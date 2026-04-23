@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import {
   Beaker,
@@ -13,6 +13,7 @@ import {
   FileText,
   Factory,
   Activity,
+  LogOut,
 } from "lucide-react";
 import {
   BarChart,
