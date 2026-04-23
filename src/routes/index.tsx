@@ -535,6 +535,27 @@ function Dashboard() {
                     <ReportRow label="Viscosidad cinemática" value={`${parsed.viscosidad} cSt`}
                       ok={parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax} />
                     <ReportRow label="Humedad" value={`${parsed.humedad} %`} ok={!criticoHumedad} critical />
+                    <div className="flex items-center justify-between px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">Color materia prima</span>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="h-4 w-4 rounded-full border border-border shrink-0"
+                          style={{ backgroundColor: colorObj?.hex ?? "transparent" }}
+                          aria-label={colorObj?.label}
+                        />
+                        <span className="font-mono text-xs">{colorObj?.label ?? "—"}</span>
+                        {colorObj?.warn ? (
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        )}
+                      </span>
+                    </div>
+                    <ReportRow
+                      label="Aspecto visual"
+                      value={inputs.aspecto === "limpio" ? "Limpio / Transparente" : "Turbio / Sedimentos"}
+                      ok={inputs.aspecto === "limpio"}
+                    />
                   </ReportGroup>
 
                   <ReportGroup title="Caracterización Química" icon={<Atom className="h-4 w-4" />}>
