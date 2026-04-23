@@ -50,6 +50,8 @@ type Inputs = {
   densidad: string;
   viscosidad: string;
   humedad: string;
+  color: string;   // id del color de materia prima
+  aspecto: string; // 'limpio' | 'turbio'
   // Química
   acidez: string;
   saponificacion: string;
@@ -80,6 +82,8 @@ const initialInputs: Inputs = {
   densidad: "",
   viscosidad: "",
   humedad: "",
+  color: "",
+  aspecto: "",
   acidez: "",
   saponificacion: "",
   peroxidos: "",
@@ -87,6 +91,14 @@ const initialInputs: Inputs = {
   catalizador: "",
   temperatura: "",
 };
+
+type ColorOpt = { id: string; label: string; hex: string; warn?: boolean };
+const COLOR_OPTIONS: ColorOpt[] = [
+  { id: "amarillo", label: "Amarillo Claro (Refinado)", hex: "#F4E27A" },
+  { id: "ambar", label: "Ámbar/Dorado (Crudo buena calidad)", hex: "#C98A2B" },
+  { id: "marron", label: "Marrón Oscuro (Usado/Degradado)", hex: "#3E2410", warn: true },
+  { id: "rojizo", label: "Rojizo (Pigmentos/Sobrecalentado)", hex: "#8A2A1E" },
+];
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -127,13 +139,18 @@ function Dashboard() {
     [inputs],
   );
 
-  const allValid = Object.values(parsed).every((v) => !isNaN(v));
+  const numericsValid = Object.values(parsed).every((v) => !isNaN(v));
+  const visualValid = inputs.color !== "" && inputs.aspecto !== "";
+  const allValid = numericsValid && visualValid;
+  const colorObj = COLOR_OPTIONS.find((c) => c.id === inputs.color);
 
   if (!authChecked) return null;
 
   // Lógica de viabilidad
-  const criticoAcidez = allValid && parsed.acidez > LIMITS.acidez;
-  const criticoHumedad = allValid && parsed.humedad > LIMITS.humedad;
+  const criticoAcidez = numericsValid && parsed.acidez > LIMITS.acidez;
+  const criticoHumedad = numericsValid && parsed.humedad > LIMITS.humedad;
+  const alertaVisual =
+    visualValid && (inputs.color === "marron" || inputs.aspecto === "turbio");
   const viable = allValid && !criticoAcidez && !criticoHumedad;
 
   const tempFueraRango =
@@ -161,11 +178,12 @@ function Dashboard() {
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     if (!allValid) {
-      setError("Todos los campos críticos deben contener datos numéricos válidos.");
+      setError("Completa todos los campos (incluye color y aspecto visual).");
       // Saltar a la primera pestaña que tenga campo vacío
-      const fisicaIncompleta = ["densidad", "viscosidad", "humedad"].some(
-        (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
-      );
+      const fisicaIncompleta =
+        ["densidad", "viscosidad", "humedad"].some(
+          (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
+        ) || !inputs.color || !inputs.aspecto;
       const quimicaIncompleta = ["acidez", "saponificacion", "peroxidos"].some(
         (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
       );
@@ -195,6 +213,8 @@ function Dashboard() {
     doc.text(`• Densidad: ${parsed.densidad} kg/m³ (rango ${LIMITS.densidadMin}-${LIMITS.densidadMax})`, 18, y); y += 6;
     doc.text(`• Viscosidad cinemática: ${parsed.viscosidad} cSt (rango ${LIMITS.viscosidadMin}-${LIMITS.viscosidadMax})`, 18, y); y += 6;
     doc.text(`• Humedad: ${parsed.humedad} % (límite ≤ ${LIMITS.humedad})`, 18, y); y += 10;
+    doc.text(`• Color materia prima: ${colorObj?.label ?? "—"}`, 18, y); y += 6;
+    doc.text(`• Aspecto visual: ${inputs.aspecto === "limpio" ? "Limpio/Transparente" : "Turbio/Sedimentos"}`, 18, y); y += 10;
 
     doc.setFontSize(12);
     doc.text("2. Caracterización Química", 14, y); y += 7;
@@ -222,6 +242,9 @@ function Dashboard() {
     }
     if (tempFueraRango) {
       doc.text(`⚠ Eficiencia energética no óptima: T fuera de ${LIMITS.tempMin}-${LIMITS.tempMax}°C.`, 14, y); y += 6;
+    }
+    if (alertaVisual) {
+      doc.text("⚠ Pre-tratamiento recomendado: filtración/refinación por aspecto o color.", 14, y); y += 6;
     }
     doc.save(`reporte-biodiesel-${Date.now()}.pdf`);
   };
@@ -309,6 +332,73 @@ function Dashboard() {
                   <FieldInput icon={<Droplets className="h-4 w-4" />} label="Contenido de Humedad" unit="%"
                     value={inputs.humedad} onChange={handleChange("humedad")}
                     hint={`Crítico ≤ ${LIMITS.humedad}`} />
+
+                  {/* Color de la materia prima */}
+                  <div>
+                    <label className="flex items-center justify-between text-xs font-medium mb-1.5">
+                      <span className="text-foreground">Color de la Materia Prima</span>
+                      <span className="text-muted-foreground font-normal">Aceite/Grasa</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {COLOR_OPTIONS.map((c) => {
+                        const active = inputs.color === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setInputs((p) => ({ ...p, color: c.id }))}
+                            className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs text-left transition-colors ${
+                              active
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-background hover:bg-accent"
+                            }`}
+                          >
+                            <span
+                              className="h-5 w-5 rounded-full border border-border shrink-0"
+                              style={{ backgroundColor: c.hex }}
+                            />
+                            <span className="leading-tight">{c.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Aspecto visual */}
+                  <div>
+                    <label className="flex items-center justify-between text-xs font-medium mb-1.5">
+                      <span className="text-foreground">Aspecto Visual</span>
+                      <span className="text-muted-foreground font-normal">Inspección directa</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "limpio", label: "Limpio / Transparente" },
+                        { id: "turbio", label: "Turbio / Con Sedimentos" },
+                      ].map((a) => {
+                        const active = inputs.aspecto === a.id;
+                        return (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => setInputs((p) => ({ ...p, aspecto: a.id }))}
+                            className={`rounded-md border px-2.5 py-2 text-xs transition-colors ${
+                              active
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-background hover:bg-accent"
+                            }`}
+                          >
+                            {a.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                    Nota técnica: un color marrón oscuro suele asociarse a alto contenido de
+                    compuestos polares y polimerización del aceite, lo que afecta el rendimiento
+                    de la transesterificación.
+                  </p>
                 </TabsContent>
 
                 <TabsContent value="quimica" className="space-y-4 mt-4">
@@ -420,6 +510,24 @@ function Dashboard() {
                   </div>
                 )}
 
+                {alertaVisual && (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-semibold">Pre-tratamiento Recomendado</p>
+                      <p className="text-muted-foreground mt-1">
+                        {inputs.color === "marron" && "Color marrón oscuro detectado. "}
+                        {inputs.aspecto === "turbio" && "Aspecto turbio o con sedimentos. "}
+                        Se recomienda <strong>filtración</strong> y/o <strong>refinación adicional</strong>
+                        antes de la transesterificación.
+                      </p>
+                      <p className="text-xs text-muted-foreground italic mt-2">
+                        El color oscuro suele estar asociado a un alto contenido de compuestos polares o polimerización.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Reporte agrupado */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -432,6 +540,27 @@ function Dashboard() {
                     <ReportRow label="Viscosidad cinemática" value={`${parsed.viscosidad} cSt`}
                       ok={parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax} />
                     <ReportRow label="Humedad" value={`${parsed.humedad} %`} ok={!criticoHumedad} critical />
+                    <div className="flex items-center justify-between px-3 py-2 text-sm">
+                      <span className="text-muted-foreground">Color materia prima</span>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="h-4 w-4 rounded-full border border-border shrink-0"
+                          style={{ backgroundColor: colorObj?.hex ?? "transparent" }}
+                          aria-label={colorObj?.label}
+                        />
+                        <span className="font-mono text-xs">{colorObj?.label ?? "—"}</span>
+                        {colorObj?.warn ? (
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        )}
+                      </span>
+                    </div>
+                    <ReportRow
+                      label="Aspecto visual"
+                      value={inputs.aspecto === "limpio" ? "Limpio / Transparente" : "Turbio / Sedimentos"}
+                      ok={inputs.aspecto === "limpio"}
+                    />
                   </ReportGroup>
 
                   <ReportGroup title="Caracterización Química" icon={<Atom className="h-4 w-4" />}>
