@@ -200,13 +200,27 @@ function Dashboard() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setDark((d) => !d)}
-            className="p-2 rounded-md border border-border hover:bg-accent transition-colors"
-            aria-label="Cambiar tema"
-          >
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setDark((d) => !d)}
+              className="p-2 rounded-md border border-border hover:bg-accent transition-colors"
+              aria-label="Cambiar tema"
+            >
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("authUser");
+                navigate({ to: "/login" });
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors text-xs font-medium"
+              aria-label="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Salir</span>
+            </button>
+          </div>
         </div>
       </header>
 
