@@ -139,13 +139,18 @@ function Dashboard() {
     [inputs],
   );
 
-  const allValid = Object.values(parsed).every((v) => !isNaN(v));
+  const numericsValid = Object.values(parsed).every((v) => !isNaN(v));
+  const visualValid = inputs.color !== "" && inputs.aspecto !== "";
+  const allValid = numericsValid && visualValid;
+  const colorObj = COLOR_OPTIONS.find((c) => c.id === inputs.color);
 
   if (!authChecked) return null;
 
   // Lógica de viabilidad
-  const criticoAcidez = allValid && parsed.acidez > LIMITS.acidez;
-  const criticoHumedad = allValid && parsed.humedad > LIMITS.humedad;
+  const criticoAcidez = numericsValid && parsed.acidez > LIMITS.acidez;
+  const criticoHumedad = numericsValid && parsed.humedad > LIMITS.humedad;
+  const alertaVisual =
+    visualValid && (inputs.color === "marron" || inputs.aspecto === "turbio");
   const viable = allValid && !criticoAcidez && !criticoHumedad;
 
   const tempFueraRango =
