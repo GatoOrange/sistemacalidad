@@ -213,6 +213,8 @@ function Dashboard() {
     doc.text(`• Densidad: ${parsed.densidad} kg/m³ (rango ${LIMITS.densidadMin}-${LIMITS.densidadMax})`, 18, y); y += 6;
     doc.text(`• Viscosidad cinemática: ${parsed.viscosidad} cSt (rango ${LIMITS.viscosidadMin}-${LIMITS.viscosidadMax})`, 18, y); y += 6;
     doc.text(`• Humedad: ${parsed.humedad} % (límite ≤ ${LIMITS.humedad})`, 18, y); y += 10;
+    doc.text(`• Color materia prima: ${colorObj?.label ?? "—"}`, 18, y); y += 6;
+    doc.text(`• Aspecto visual: ${inputs.aspecto === "limpio" ? "Limpio/Transparente" : "Turbio/Sedimentos"}`, 18, y); y += 10;
 
     doc.setFontSize(12);
     doc.text("2. Caracterización Química", 14, y); y += 7;
@@ -240,6 +242,9 @@ function Dashboard() {
     }
     if (tempFueraRango) {
       doc.text(`⚠ Eficiencia energética no óptima: T fuera de ${LIMITS.tempMin}-${LIMITS.tempMax}°C.`, 14, y); y += 6;
+    }
+    if (alertaVisual) {
+      doc.text("⚠ Pre-tratamiento recomendado: filtración/refinación por aspecto o color.", 14, y); y += 6;
     }
     doc.save(`reporte-biodiesel-${Date.now()}.pdf`);
   };
