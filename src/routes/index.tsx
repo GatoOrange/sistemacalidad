@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import {
   Beaker,
@@ -13,6 +13,7 @@ import {
   FileText,
   Factory,
   Activity,
+  LogOut,
 } from "lucide-react";
 import {
   BarChart,
@@ -56,6 +57,8 @@ const LIMITS = {
 };
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
   const [dark, setDark] = useState(true);
   const [inputs, setInputs] = useState<Inputs>({
     acidez: "",
@@ -64,6 +67,16 @@ function Dashboard() {
     pureza: "",
   });
   const [submitted, setSubmitted] = useState(false);
+
+  // Auth guard: redirige a /login si no está autenticado
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem("isLoggedIn") !== "true") {
+      navigate({ to: "/login" });
+    } else {
+      setAuthChecked(true);
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -86,6 +99,9 @@ function Dashboard() {
     !isNaN(parsed.humedad) &&
     !isNaN(parsed.saponificacion) &&
     !isNaN(parsed.pureza);
+
+  // Evita parpadeos: no renderiza nada hasta verificar autenticación
+  if (!authChecked) return null;
 
   const viable = allValid && parsed.acidez <= LIMITS.acidez && parsed.humedad <= LIMITS.humedad;
 
@@ -184,13 +200,27 @@ function Dashboard() {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setDark((d) => !d)}
-            className="p-2 rounded-md border border-border hover:bg-accent transition-colors"
-            aria-label="Cambiar tema"
-          >
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setDark((d) => !d)}
+              className="p-2 rounded-md border border-border hover:bg-accent transition-colors"
+              aria-label="Cambiar tema"
+            >
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("isLoggedIn");
+                localStorage.removeItem("authUser");
+                navigate({ to: "/login" });
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors text-xs font-medium"
+              aria-label="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Salir</span>
+            </button>
+          </div>
         </div>
       </header>
 
