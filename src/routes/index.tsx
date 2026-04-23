@@ -327,6 +327,73 @@ function Dashboard() {
                   <FieldInput icon={<Droplets className="h-4 w-4" />} label="Contenido de Humedad" unit="%"
                     value={inputs.humedad} onChange={handleChange("humedad")}
                     hint={`Crítico ≤ ${LIMITS.humedad}`} />
+
+                  {/* Color de la materia prima */}
+                  <div>
+                    <label className="flex items-center justify-between text-xs font-medium mb-1.5">
+                      <span className="text-foreground">Color de la Materia Prima</span>
+                      <span className="text-muted-foreground font-normal">Aceite/Grasa</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {COLOR_OPTIONS.map((c) => {
+                        const active = inputs.color === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => setInputs((p) => ({ ...p, color: c.id }))}
+                            className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs text-left transition-colors ${
+                              active
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-background hover:bg-accent"
+                            }`}
+                          >
+                            <span
+                              className="h-5 w-5 rounded-full border border-border shrink-0"
+                              style={{ backgroundColor: c.hex }}
+                            />
+                            <span className="leading-tight">{c.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Aspecto visual */}
+                  <div>
+                    <label className="flex items-center justify-between text-xs font-medium mb-1.5">
+                      <span className="text-foreground">Aspecto Visual</span>
+                      <span className="text-muted-foreground font-normal">Inspección directa</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "limpio", label: "Limpio / Transparente" },
+                        { id: "turbio", label: "Turbio / Con Sedimentos" },
+                      ].map((a) => {
+                        const active = inputs.aspecto === a.id;
+                        return (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => setInputs((p) => ({ ...p, aspecto: a.id }))}
+                            className={`rounded-md border px-2.5 py-2 text-xs transition-colors ${
+                              active
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-background hover:bg-accent"
+                            }`}
+                          >
+                            {a.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                    Nota técnica: un color marrón oscuro suele asociarse a alto contenido de
+                    compuestos polares y polimerización del aceite, lo que afecta el rendimiento
+                    de la transesterificación.
+                  </p>
                 </TabsContent>
 
                 <TabsContent value="quimica" className="space-y-4 mt-4">
