@@ -100,6 +100,9 @@ function Dashboard() {
     !isNaN(parsed.saponificacion) &&
     !isNaN(parsed.pureza);
 
+  // Evita parpadeos: no renderiza nada hasta verificar autenticación
+  if (!authChecked) return null;
+
   const viable = allValid && parsed.acidez <= LIMITS.acidez && parsed.humedad <= LIMITS.humedad;
 
   // Estequiometría: relación molar 1:6 (aceite:alcohol) recomendada para transesterificación
