@@ -111,6 +111,12 @@ function Dashboard() {
   const [tab, setTab] = useState("fisica");
   const [error, setError] = useState<string | null>(null);
 
+  // Módulo de optimización
+  const [optCantidad, setOptCantidad] = useState("");
+  const [optAlcohol, setOptAlcohol] = useState<"etanol" | "metanol">("etanol");
+  const [optRatio, setOptRatio] = useState("6");
+  const [optCat, setOptCat] = useState("1");
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (localStorage.getItem("isLoggedIn") !== "true") {
@@ -161,6 +167,48 @@ function Dashboard() {
   // Estequiometría sugerida
   const ratioSugerido = 6;
   const masaEtanolPorKg = ((6 * 46) / 880 * 1000).toFixed(1);
+
+  // ===== Cálculos de optimización (tiempo real) =====
+  const MW = { etanol: 46, metanol: 32, aceite: 880 };
+  const optKg = parseFloat(optCantidad);
+  const optR = parseFloat(optRatio);
+  const optC = parseFloat(optCat);
+  const optValid = !isNaN(optKg) && optKg > 0 && !isNaN(optR) && !isNaN(optC);
+
+  const molesAceite = optValid ? (optKg * 1000) / MW.aceite : 0;
+  const molesAlcohol = molesAceite * (optR || 0);
+  const masaAlcoholKg = (molesAlcohol * MW[optAlcohol]) / 1000;
+  const masaCatKg = optValid ? optKg * ((optC || 0) / 100) : 0;
+
+  // Rendimiento: base 97% (metanol) / 95% (etanol), penalizaciones por calidad MP
+  let rendimiento = optAlcohol === "metanol" ? 97 : 95;
+  const penal: string[] = [];
+  if (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad) { rendimiento -= 10; penal.push("Humedad alta −10%"); }
+  if (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez) { rendimiento -= 15; penal.push("Acidez crítica −15%"); }
+  if (!isNaN(parsed.temperatura) && (parsed.temperatura < LIMITS.tempMin || parsed.temperatura > LIMITS.tempMax)) {
+    rendimiento -= 8; penal.push("T fuera de rango −8%");
+  }
+  if (inputs.color === "marron") { rendimiento -= 5; penal.push("Color oscuro −5%"); }
+  if (inputs.aspecto === "turbio") { rendimiento -= 3; penal.push("Aspecto turbio −3%"); }
+  if (optValid && optR < 5) { rendimiento -= 5; penal.push("Relación molar baja −5%"); }
+  if (optValid && optR > 9) { rendimiento -= 2; penal.push("Exceso de alcohol −2%"); }
+  rendimiento = Math.max(0, Math.min(100, rendimiento));
+
+  const masaBiodiesel = optValid ? optKg * (rendimiento / 100) : 0;
+  const conversion = Math.max(0, Math.min(99, rendimiento - 2));
+
+  // Riesgo de saponificación
+  const sapScore =
+    (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad ? 2 : 0) +
+    (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez ? 2 : 0) +
+    (optValid && optC > LIMITS.catalizadorMax ? 2 : 0) +
+    (inputs.aspecto === "turbio" ? 1 : 0);
+  const sapNivel = sapScore >= 3 ? "Alto" : sapScore >= 1 ? "Medio" : "Bajo";
+
+  // Eficiencia de reacción (combinada)
+  const eficiencia = optValid
+    ? Math.round(rendimiento * 0.6 + conversion * 0.4 - (sapScore * 3))
+    : 0;
 
   const chartData = allValid
     ? [
@@ -431,6 +479,104 @@ function Dashboard() {
                 </TabsContent>
 
                 <TabsContent value="optimizacion" className="space-y-3 mt-4">
+                  {/* Módulo de cálculo */}
+                  <div className="rounded-md border border-border bg-background p-3 space-y-3">
+                    <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
+                      <Zap className="h-3.5 w-3.5" /> Cálculo de Transesterificación
+                    </h4>
+
+                    <FieldInput
+                      icon={<Beaker className="h-4 w-4" />}
+                      label="Cantidad de Aceite"
+                      unit="kg"
+                      value={optCantidad}
+                      onChange={(e) => setOptCantidad(e.target.value)}
+                      hint="Materia prima a procesar"
+                    />
+
+                    <div>
+                      <label className="text-xs font-medium mb-1.5 block">Tipo de Alcohol</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["etanol", "metanol"] as const).map((a) => (
+                          <button
+                            key={a}
+                            type="button"
+                            onClick={() => setOptAlcohol(a)}
+                            className={`rounded-md border px-2.5 py-2 text-xs capitalize transition-colors ${
+                              optAlcohol === a
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-background hover:bg-accent"
+                            }`}
+                          >
+                            {a} <span className="text-muted-foreground font-mono">({MW[a]} g/mol)</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <FieldInput
+                        icon={<Atom className="h-4 w-4" />}
+                        label="Relación molar"
+                        unit=":1"
+                        value={optRatio}
+                        onChange={(e) => setOptRatio(e.target.value)}
+                        hint="Sugerido 6:1"
+                      />
+                      <FieldInput
+                        icon={<FlaskConical className="h-4 w-4" />}
+                        label="Catalizador"
+                        unit="%"
+                        value={optCat}
+                        onChange={(e) => setOptCat(e.target.value)}
+                        hint="Sugerido 1%"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Resultados tiempo real */}
+                  {optValid ? (
+                    <div className="rounded-md border border-border bg-background p-3 space-y-2">
+                      <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
+                        <TrendingUp className="h-3.5 w-3.5" /> Resultados (tiempo real)
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        <OptRow label={`${optAlcohol} requerido`} target={`${masaAlcoholKg.toFixed(2)} kg`} actual={`${molesAlcohol.toFixed(1)} mol`} />
+                        <OptRow label="Catalizador req." target={`${(masaCatKg * 1000).toFixed(1)} g`} actual={`${optC}%`} />
+                        <OptRow label="Biodiesel estimado" target={`${masaBiodiesel.toFixed(2)} kg`} actual={`${rendimiento.toFixed(0)}%`} />
+                        <OptRow label="Conversión estimada" target={`${conversion.toFixed(0)}%`} actual={`η ${eficiencia}%`} />
+                      </div>
+
+                      {/* Barras */}
+                      <div className="space-y-1.5 pt-1">
+                        <ProgressBar label="Rendimiento" value={rendimiento} tone={rendimiento >= 90 ? "ok" : rendimiento >= 75 ? "warn" : "danger"} />
+                        <ProgressBar label="Conversión" value={conversion} tone={conversion >= 85 ? "ok" : conversion >= 70 ? "warn" : "danger"} />
+                        <ProgressBar label="Eficiencia" value={Math.max(0, eficiencia)} tone={eficiencia >= 85 ? "ok" : eficiencia >= 65 ? "warn" : "danger"} />
+                      </div>
+
+                      {/* Saponificación */}
+                      <div className={`flex items-center justify-between rounded border px-2.5 py-1.5 text-xs ${
+                        sapNivel === "Alto" ? "border-destructive/50 bg-destructive/5 text-destructive"
+                        : sapNivel === "Medio" ? "border-amber-500/40 bg-amber-500/5 text-amber-500"
+                        : "border-emerald-500/40 bg-emerald-500/5 text-emerald-500"
+                      }`}>
+                        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Riesgo de saponificación</span>
+                        <span className="font-mono font-semibold">{sapNivel}</span>
+                      </div>
+
+                      {penal.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground pt-1">
+                          <span className="font-semibold text-foreground">Penalizaciones detectadas: </span>
+                          {penal.join(" · ")}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-dashed border-border bg-background p-4 text-center text-[11px] text-muted-foreground">
+                      Ingresa la cantidad de aceite para calcular el rendimiento.
+                    </div>
+                  )}
+
                   <div className="rounded-md border border-border bg-background p-3">
                     <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
                       <Zap className="h-3.5 w-3.5" /> Parámetros Óptimos
