@@ -938,3 +938,20 @@ function OptRow({ label, target, actual }: { label: string; target: string; actu
     </div>
   );
 }
+
+function ProgressBar({ label, value, tone }: { label: string; value: number; tone: "ok" | "warn" | "danger" }) {
+  const v = Math.max(0, Math.min(100, value));
+  const color =
+    tone === "ok" ? "bg-emerald-500" : tone === "warn" ? "bg-amber-500" : "bg-destructive";
+  return (
+    <div>
+      <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
+        <span className="uppercase tracking-wider">{label}</span>
+        <span className="font-mono">{v.toFixed(0)}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div className={`h-full ${color} transition-all`} style={{ width: `${v}%` }} />
+      </div>
+    </div>
+  );
+}
