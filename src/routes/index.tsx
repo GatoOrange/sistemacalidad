@@ -17,6 +17,8 @@ import {
   Thermometer,
   Atom,
   Settings2,
+  TrendingUp,
+  Zap,
 } from "lucide-react";
 import {
   BarChart,
@@ -310,7 +312,7 @@ function Dashboard() {
             </h2>
             <form onSubmit={handleAnalyze} className="space-y-4">
               <Tabs value={tab} onValueChange={setTab} className="w-full">
-                <TabsList className="grid grid-cols-3 w-full">
+                <TabsList className="grid grid-cols-4 w-full">
                   <TabsTrigger value="fisica" className="text-xs gap-1">
                     <Thermometer className="h-3.5 w-3.5" /> Física
                   </TabsTrigger>
@@ -319,6 +321,9 @@ function Dashboard() {
                   </TabsTrigger>
                   <TabsTrigger value="control" className="text-xs gap-1">
                     <Settings2 className="h-3.5 w-3.5" /> Control
+                  </TabsTrigger>
+                  <TabsTrigger value="optimizacion" className="text-xs gap-1">
+                    <TrendingUp className="h-3.5 w-3.5" /> Optim.
                   </TabsTrigger>
                 </TabsList>
 
@@ -423,6 +428,57 @@ function Dashboard() {
                   <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura de Reacción" unit="°C"
                     value={inputs.temperatura} onChange={handleChange("temperatura")}
                     hint={`Óptimo ${LIMITS.tempMin}–${LIMITS.tempMax}`} />
+                </TabsContent>
+
+                <TabsContent value="optimizacion" className="space-y-3 mt-4">
+                  <div className="rounded-md border border-border bg-background p-3">
+                    <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
+                      <Zap className="h-3.5 w-3.5" /> Parámetros Óptimos
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <OptRow label="Relación molar" target={`1 : ${ratioSugerido}`} actual={inputs.relacionMolar || "—"} />
+                      <OptRow label="Catalizador" target={`${LIMITS.catalizadorMin}–${LIMITS.catalizadorMax}%`} actual={inputs.catalizador ? `${inputs.catalizador}%` : "—"} />
+                      <OptRow label="Temperatura" target={`${LIMITS.tempMin}–${LIMITS.tempMax}°C`} actual={inputs.temperatura ? `${inputs.temperatura}°C` : "—"} />
+                      <OptRow label="Etanol/kg" target={`${masaEtanolPorKg} g`} actual="Estequio." />
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border border-border bg-background p-3 space-y-2">
+                    <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
+                      <TrendingUp className="h-3.5 w-3.5" /> Recomendaciones de Proceso
+                    </h4>
+                    <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Mantener T entre {LIMITS.tempMin}–{LIMITS.tempMax}°C para evitar evaporación del etanol y maximizar cinética.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Exceso de etanol (1:6) desplaza el equilibrio hacia los ésteres etílicos.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Catalizador (NaOH/KOH) por encima de 1.5% promueve saponificación indeseada.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Agitación constante a 300–600 rpm durante 60–90 min.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Decantación mínima 8 h para separar glicerina del éster.</li>
+                    </ul>
+                  </div>
+
+                  <div className="rounded-md border border-border bg-background p-3">
+                    <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
+                      <Gauge className="h-3.5 w-3.5" /> Eficiencia Energética Estimada
+                    </h4>
+                    {numericsValid ? (
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {tempFueraRango ? (
+                          <>Temperatura <span className="font-mono text-destructive">{parsed.temperatura}°C</span> fuera del óptimo: pérdida estimada de conversión ≈ <span className="font-mono">8–15%</span>.</>
+                        ) : (
+                          <>Temperatura dentro del rango óptimo. Conversión esperada ≥ <span className="font-mono text-emerald-500">95%</span> en 60 min.</>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground italic">
+                        Ingresa los parámetros de Control para estimar la eficiencia.
+                      </p>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                    Nota: la optimización combina caracterización de la materia prima con las
+                    condiciones de reacción para maximizar el rendimiento del éster etílico.
+                  </p>
                 </TabsContent>
               </Tabs>
 
@@ -721,6 +777,18 @@ function ReportRow({
           <AlertTriangle className={`h-4 w-4 ${critical ? "text-destructive" : "text-amber-500"}`} />
         )}
       </span>
+    </div>
+  );
+}
+
+function OptRow({ label, target, actual }: { label: string; target: string; actual: string }) {
+  return (
+    <div className="rounded border border-border bg-card px-2 py-1.5">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="flex items-baseline justify-between gap-2 mt-0.5">
+        <span className="font-mono text-[11px] text-primary">{target}</span>
+        <span className="font-mono text-[11px] text-foreground">{actual}</span>
+      </div>
     </div>
   );
 }
