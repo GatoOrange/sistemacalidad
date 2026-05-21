@@ -671,28 +671,28 @@ function Dashboard() {
                     )}
                     <div className="flex-1">
                       <h3 className="font-semibold">
-                        {viable ? "Lote VIABLE para transesterificación" : "Lote NO VIABLE — Estado crítico"}
+                        {viable ? "Lote APTO como Biodisolvente Dieléctrico" : "Lote NO APTO — Estado crítico"}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
                         {viable
-                          ? "Cumple los límites técnicos críticos. Apto para iniciar reacción con etanol."
-                          : "Acidez o humedad exceden los límites críticos. Se requiere pre-tratamiento."}
+                          ? "Cumple los límites críticos de calidad. Apto para uso como aislante líquido."
+                          : "Acidez o humedad exceden los límites críticos. Se compromete la rigidez dieléctrica."}
                       </p>
                     </div>
                   </div>
 
                   {!viable && (
                     <div className="mt-4 pt-4 border-t border-border space-y-2 text-sm">
-                      <p className="font-medium">Cumplimiento Normativo · Resolución 182142 de 2007 / NTC</p>
+                      <p className="font-medium">Cumplimiento Normativo · ASTM D6871 / IEC 60296</p>
                       <ul className="list-disc list-inside text-muted-foreground space-y-1">
                         {criticoAcidez && (
                           <li>
-                            Acidez {parsed.acidez} &gt; {LIMITS.acidez} mg KOH/g → <strong>Esterificación ácida</strong> con H₂SO₄ (1% v/v).
+                            Acidez {parsed.acidez} &gt; {LIMITS.acidez} mg KOH/g → <strong>Neutralización alcalina</strong> y refinado con tierras activadas.
                           </li>
                         )}
                         {criticoHumedad && (
                           <li>
-                            Humedad {parsed.humedad}% &gt; {LIMITS.humedad}% → <strong>Secado al vacío</strong> a 105°C.
+                            Humedad {parsed.humedad}% &gt; {LIMITS.humedad}% → <strong>Deshidratación al vacío</strong> (105°C, &lt;1 kPa) para preservar rigidez dieléctrica.
                           </li>
                         )}
                       </ul>
@@ -704,10 +704,10 @@ function Dashboard() {
                   <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
                     <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
                     <div className="text-sm">
-                      <p className="font-semibold">Eficiencia Energética No Óptima</p>
+                      <p className="font-semibold">Estabilidad Térmica Comprometida</p>
                       <p className="text-muted-foreground mt-1">
-                        Temperatura {parsed.temperatura}°C fuera del rango óptimo para etanol ({LIMITS.tempMin}–{LIMITS.tempMax}°C).
-                        Ajustar para maximizar conversión.
+                        Temperatura {parsed.temperatura}°C fuera del rango operativo seguro ({LIMITS.tempMin}–{LIMITS.tempMax}°C).
+                        Ajustar para preservar el desempeño aislante y la seguridad industrial.
                       </p>
                     </div>
                   </div>
@@ -722,10 +722,10 @@ function Dashboard() {
                         {inputs.color === "marron" && "Color marrón oscuro detectado. "}
                         {inputs.aspecto === "turbio" && "Aspecto turbio o con sedimentos. "}
                         Se recomienda <strong>filtración</strong> y/o <strong>refinación adicional</strong>
-                        antes de la transesterificación.
+                        antes del proceso de formulación del biodisolvente.
                       </p>
                       <p className="text-xs text-muted-foreground italic mt-2">
-                        El color oscuro suele estar asociado a un alto contenido de compuestos polares o polimerización.
+                        El color oscuro está asociado a compuestos polares y oxidación que reducen la rigidez dieléctrica.
                       </p>
                     </div>
                   </div>
@@ -774,12 +774,12 @@ function Dashboard() {
                       ok={parsed.peroxidos <= LIMITS.peroxidosMax} />
                   </ReportGroup>
 
-                  <ReportGroup title="Variables de Control de Proceso" icon={<Settings2 className="h-4 w-4" />}>
-                    <ReportRow label="Relación Molar Alcohol/Aceite" value={`${parsed.relacionMolar} : 1`}
+                  <ReportGroup title="Variables de Control Operativo" icon={<Settings2 className="h-4 w-4" />}>
+                    <ReportRow label="Relación Molar Esterificante/Aceite" value={`${parsed.relacionMolar} : 1`}
                       ok={parsed.relacionMolar >= 5 && parsed.relacionMolar <= 9} />
                     <ReportRow label="Concentración Catalizador" value={`${parsed.catalizador} %`}
                       ok={parsed.catalizador >= LIMITS.catalizadorMin && parsed.catalizador <= LIMITS.catalizadorMax} />
-                    <ReportRow label="Temperatura de Reacción" value={`${parsed.temperatura} °C`} ok={!tempFueraRango} />
+                    <ReportRow label="Temperatura de Proceso" value={`${parsed.temperatura} °C`} ok={!tempFueraRango} />
                   </ReportGroup>
                 </div>
 
@@ -811,13 +811,13 @@ function Dashboard() {
                 {/* Estequiometría */}
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Optimización Estequiométrica
+                    Formulación Estequiométrica de Referencia
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <MetricBox label="Relación molar sugerida" value={`1 : ${ratioSugerido}`}
-                      sub="Maximiza conversión a éster etílico" />
-                    <MetricBox label="Etanol requerido" value={`${masaEtanolPorKg} g/kg`}
-                      sub="Por kg de aceite procesado" />
+                      sub="Maximiza rendimiento del biodisolvente" />
+                    <MetricBox label="Esterificante requerido" value={`${masaEtanolPorKg} g/kg`}
+                      sub="Por kg de aceite base procesado" />
                   </div>
                 </div>
 
@@ -834,7 +834,7 @@ function Dashboard() {
         </div>
 
         <footer className="text-center text-xs text-muted-foreground pt-6 pb-2 border-t border-border">
-          QC Biodiesel · Cumplimiento Resolución 182142 de 2007 · NTC 5444
+          QC Biodisolvente Dieléctrico · ASTM D6871 · IEC 60296 · ASTM D877
         </footer>
       </main>
     </div>
