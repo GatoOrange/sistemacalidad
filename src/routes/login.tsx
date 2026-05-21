@@ -5,10 +5,11 @@ import { Factory, Lock, User as UserIcon, AlertCircle, Moon, Sun } from "lucide-
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Iniciar Sesión — QC Biodiesel" },
+      { title: "Iniciar Sesión — QC Biodisolvente Dieléctrico" },
       {
         name: "description",
-        content: "Acceso al Dashboard de Control de Calidad de Éster Etílico (Biodiesel).",
+        content:
+          "Acceso al Sistema de Control de Calidad y Optimización para Biodisolvente Dieléctrico.",
       },
     ],
   }),
@@ -80,10 +81,10 @@ function LoginPage() {
               <Factory className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-center">
-              QC Biodiesel — Éster Etílico
+              QC Biodisolvente Dieléctrico
             </h1>
             <p className="text-xs text-muted-foreground mt-1 text-center">
-              Sistema de Control de Calidad · Acceso Restringido
+              Control de Calidad y Optimización · Acceso Restringido
             </p>
           </div>
 
@@ -140,7 +141,7 @@ function LoginPage() {
           </form>
 
           <p className="mt-6 text-[10px] text-center text-muted-foreground uppercase tracking-wider">
-            Planta de Producción · Grupo 3
+            Aislantes Líquidos · Grupo 3
           </p>
         </div>
       </div>
