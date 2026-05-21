@@ -251,7 +251,7 @@ function Dashboard() {
     const date = new Date().toLocaleString("es-CO");
     let y = 20;
     doc.setFontSize(16);
-    doc.text("Reporte de Viabilidad — Biodiesel (Éster Etílico)", 14, y);
+    doc.text("Reporte de Calidad — Biodisolvente Dieléctrico", 14, y);
     y += 8;
     doc.setFontSize(10);
     doc.text(`Fecha: ${date}`, 14, y);
@@ -263,7 +263,7 @@ function Dashboard() {
     doc.text(`• Densidad: ${parsed.densidad} kg/m³ (rango ${LIMITS.densidadMin}-${LIMITS.densidadMax})`, 18, y); y += 6;
     doc.text(`• Viscosidad cinemática: ${parsed.viscosidad} cSt (rango ${LIMITS.viscosidadMin}-${LIMITS.viscosidadMax})`, 18, y); y += 6;
     doc.text(`• Humedad: ${parsed.humedad} % (límite ≤ ${LIMITS.humedad})`, 18, y); y += 10;
-    doc.text(`• Color materia prima: ${colorObj?.label ?? "—"}`, 18, y); y += 6;
+    doc.text(`• Color del biodisolvente: ${colorObj?.label ?? "—"}`, 18, y); y += 6;
     doc.text(`• Aspecto visual: ${inputs.aspecto === "limpio" ? "Limpio/Transparente" : "Turbio/Sedimentos"}`, 18, y); y += 10;
 
     doc.setFontSize(12);
@@ -274,29 +274,29 @@ function Dashboard() {
     doc.text(`• Índice de Peróxidos: ${parsed.peroxidos} meq/kg (límite ≤ ${LIMITS.peroxidosMax})`, 18, y); y += 10;
 
     doc.setFontSize(12);
-    doc.text("3. Variables de Control de Proceso", 14, y); y += 7;
+    doc.text("3. Variables de Control Operativo", 14, y); y += 7;
     doc.setFontSize(10);
-    doc.text(`• Relación molar alcohol/aceite: ${parsed.relacionMolar} (sugerido ${ratioSugerido}:1)`, 18, y); y += 6;
+    doc.text(`• Relación molar esterificante/aceite: ${parsed.relacionMolar} (sugerido ${ratioSugerido}:1)`, 18, y); y += 6;
     doc.text(`• Concentración de catalizador: ${parsed.catalizador} % (rango ${LIMITS.catalizadorMin}-${LIMITS.catalizadorMax})`, 18, y); y += 6;
-    doc.text(`• Temperatura de reacción: ${parsed.temperatura} °C (rango ${LIMITS.tempMin}-${LIMITS.tempMax})`, 18, y); y += 12;
+    doc.text(`• Temperatura de proceso: ${parsed.temperatura} °C (rango ${LIMITS.tempMin}-${LIMITS.tempMax})`, 18, y); y += 12;
 
     doc.setFontSize(12);
-    doc.text(`Resultado: ${viable ? "VIABLE" : "NO VIABLE"}`, 14, y); y += 8;
+    doc.text(`Resultado: ${viable ? "APTO" : "NO APTO"}`, 14, y); y += 8;
     doc.setFontSize(10);
     if (!viable) {
-      doc.text("Recomendaciones (Res. 182142 de 2007 / NTC):", 14, y); y += 6;
-      if (criticoAcidez) { doc.text("- Esterificación ácida con H2SO4 (1% v/v).", 18, y); y += 6; }
-      if (criticoHumedad) { doc.text("- Secado al vacío hasta humedad < 0.05%.", 18, y); y += 6; }
+      doc.text("Recomendaciones (ASTM D6871 / IEC 60296):", 14, y); y += 6;
+      if (criticoAcidez) { doc.text("- Neutralización alcalina y refinado con tierras activadas.", 18, y); y += 6; }
+      if (criticoHumedad) { doc.text("- Deshidratacion al vacio (<1 kPa) hasta humedad < 0.05%.", 18, y); y += 6; }
     } else {
-      doc.text("Cumple normativa colombiana para producción de biodiesel.", 14, y); y += 6;
+      doc.text("Cumple parametros de calidad para uso como biodisolvente dielectrico.", 14, y); y += 6;
     }
     if (tempFueraRango) {
-      doc.text(`⚠ Eficiencia energética no óptima: T fuera de ${LIMITS.tempMin}-${LIMITS.tempMax}°C.`, 14, y); y += 6;
+      doc.text(`! Estabilidad termica comprometida: T fuera de ${LIMITS.tempMin}-${LIMITS.tempMax} C.`, 14, y); y += 6;
     }
     if (alertaVisual) {
-      doc.text("⚠ Pre-tratamiento recomendado: filtración/refinación por aspecto o color.", 14, y); y += 6;
+      doc.text("! Pre-tratamiento recomendado: filtracion/refinacion por aspecto o color.", 14, y); y += 6;
     }
-    doc.save(`reporte-biodiesel-${Date.now()}.pdf`);
+    doc.save(`reporte-biodisolvente-${Date.now()}.pdf`);
   };
 
   return (
