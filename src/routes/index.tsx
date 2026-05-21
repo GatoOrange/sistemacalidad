@@ -389,8 +389,8 @@ function Dashboard() {
                   {/* Color de la materia prima */}
                   <div>
                     <label className="flex items-center justify-between text-xs font-medium mb-1.5">
-                      <span className="text-foreground">Color de la Materia Prima</span>
-                      <span className="text-muted-foreground font-normal">Aceite/Grasa</span>
+                      <span className="text-foreground">Color del Biodisolvente</span>
+                      <span className="text-muted-foreground font-normal">Aceite base vegetal</span>
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       {COLOR_OPTIONS.map((c) => {
@@ -449,8 +449,8 @@ function Dashboard() {
 
                   <p className="text-[11px] text-muted-foreground italic leading-relaxed">
                     Nota técnica: un color marrón oscuro suele asociarse a alto contenido de
-                    compuestos polares y polimerización del aceite, lo que afecta el rendimiento
-                    de la transesterificación.
+                    compuestos polares y oxidación avanzada, lo que reduce la rigidez dieléctrica
+                    y la estabilidad aislante del biodisolvente.
                   </p>
                 </TabsContent>
 
@@ -467,13 +467,13 @@ function Dashboard() {
                 </TabsContent>
 
                 <TabsContent value="control" className="space-y-4 mt-4">
-                  <FieldInput icon={<Atom className="h-4 w-4" />} label="Relación Molar Alcohol/Aceite" unit=":1"
+                  <FieldInput icon={<Atom className="h-4 w-4" />} label="Relación Molar Esterificante/Aceite" unit=":1"
                     value={inputs.relacionMolar} onChange={handleChange("relacionMolar")}
                     hint={`Sugerido ${ratioSugerido}:1`} />
                   <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Concentración Catalizador" unit="%"
                     value={inputs.catalizador} onChange={handleChange("catalizador")}
                     hint={`Rango ${LIMITS.catalizadorMin}–${LIMITS.catalizadorMax}`} />
-                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura de Reacción" unit="°C"
+                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura de Proceso" unit="°C"
                     value={inputs.temperatura} onChange={handleChange("temperatura")}
                     hint={`Óptimo ${LIMITS.tempMin}–${LIMITS.tempMax}`} />
                 </TabsContent>
@@ -482,20 +482,20 @@ function Dashboard() {
                   {/* Módulo de cálculo */}
                   <div className="rounded-md border border-border bg-background p-3 space-y-3">
                     <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
-                      <Zap className="h-3.5 w-3.5" /> Cálculo de Transesterificación
+                      <Zap className="h-3.5 w-3.5" /> Formulación del Biodisolvente
                     </h4>
 
                     <FieldInput
                       icon={<Beaker className="h-4 w-4" />}
-                      label="Cantidad de Aceite"
+                      label="Cantidad de Aceite Base"
                       unit="kg"
                       value={optCantidad}
                       onChange={(e) => setOptCantidad(e.target.value)}
-                      hint="Materia prima a procesar"
+                      hint="Aceite vegetal a procesar"
                     />
 
                     <div>
-                      <label className="text-xs font-medium mb-1.5 block">Tipo de Alcohol</label>
+                      <label className="text-xs font-medium mb-1.5 block">Tipo de Esterificante</label>
                       <div className="grid grid-cols-2 gap-2">
                         {(["etanol", "metanol"] as const).map((a) => (
                           <button
