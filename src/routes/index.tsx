@@ -36,11 +36,11 @@ import jsPDF from "jspdf";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard QC — Éster Etílico (Biodiesel)" },
+      { title: "Dashboard QC — Biodisolvente Dieléctrico" },
       {
         name: "description",
         content:
-          "Dashboard de Control de Calidad para producción de Éster Etílico (Biodiesel). Análisis físico, químico y de proceso.",
+          "Sistema de Control de Calidad y Optimización para Biodisolvente Dieléctrico. Desempeño dieléctrico, estabilidad operativa y seguridad industrial.",
       },
     ],
   }),
@@ -96,10 +96,10 @@ const initialInputs: Inputs = {
 
 type ColorOpt = { id: string; label: string; hex: string; warn?: boolean };
 const COLOR_OPTIONS: ColorOpt[] = [
-  { id: "amarillo", label: "Amarillo Claro (Refinado)", hex: "#F4E27A" },
-  { id: "ambar", label: "Ámbar/Dorado (Crudo buena calidad)", hex: "#C98A2B" },
-  { id: "marron", label: "Marrón Oscuro (Usado/Degradado)", hex: "#3E2410", warn: true },
-  { id: "rojizo", label: "Rojizo (Pigmentos/Sobrecalentado)", hex: "#8A2A1E" },
+  { id: "amarillo", label: "Amarillo Claro (Refinado dieléctrico)", hex: "#F4E27A" },
+  { id: "ambar", label: "Ámbar/Dorado (Estable, baja oxidación)", hex: "#C98A2B" },
+  { id: "marron", label: "Marrón Oscuro (Oxidado/Contaminado)", hex: "#3E2410", warn: true },
+  { id: "rojizo", label: "Rojizo (Compuestos polares/Sobrecalentado)", hex: "#8A2A1E" },
 ];
 
 function Dashboard() {
