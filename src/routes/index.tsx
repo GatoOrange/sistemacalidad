@@ -309,10 +309,10 @@ function Dashboard() {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-bold tracking-tight">
-                QC Biodiesel — Éster Etílico
+                QC Biodisolvente Dieléctrico
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
-                Sistema de Control de Calidad · Planta de Producción
+                Control de Calidad y Optimización · Aislantes Líquidos
               </p>
             </div>
           </div>
@@ -343,11 +343,11 @@ function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard icon={<Activity className="h-4 w-4" />} label="Estado planta" value="Operativa" tone="ok" />
           <StatCard icon={<Gauge className="h-4 w-4" />} label="Lotes hoy" value="—" tone="muted" />
-          <StatCard icon={<Beaker className="h-4 w-4" />} label="Norma" value="Res. 182142/07" tone="muted" />
+          <StatCard icon={<Beaker className="h-4 w-4" />} label="Norma" value="ASTM D6871 / IEC 60296" tone="muted" />
           <StatCard
             icon={submitted && viable ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
             label="Último análisis"
-            value={!submitted ? "Pendiente" : viable ? "Viable" : "No viable"}
+            value={!submitted ? "Pendiente" : viable ? "Apto" : "No apto"}
             tone={!submitted ? "muted" : viable ? "ok" : "danger"}
           />
         </div>
