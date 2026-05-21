@@ -543,7 +543,7 @@ function Dashboard() {
                       <div className="grid grid-cols-2 gap-2">
                         <OptRow label={`${optAlcohol} requerido`} target={`${masaAlcoholKg.toFixed(2)} kg`} actual={`${molesAlcohol.toFixed(1)} mol`} />
                         <OptRow label="Catalizador req." target={`${(masaCatKg * 1000).toFixed(1)} g`} actual={`${optC}%`} />
-                        <OptRow label="Biodiesel estimado" target={`${masaBiodiesel.toFixed(2)} kg`} actual={`${rendimiento.toFixed(0)}%`} />
+                        <OptRow label="Biodisolvente estimado" target={`${masaBiodiesel.toFixed(2)} kg`} actual={`${rendimiento.toFixed(0)}%`} />
                         <OptRow label="Conversión estimada" target={`${conversion.toFixed(0)}%`} actual={`η ${eficiencia}%`} />
                       </div>
 
@@ -560,7 +560,7 @@ function Dashboard() {
                         : sapNivel === "Medio" ? "border-amber-500/40 bg-amber-500/5 text-amber-500"
                         : "border-emerald-500/40 bg-emerald-500/5 text-emerald-500"
                       }`}>
-                        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Riesgo de saponificación</span>
+                        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" /> Riesgo de degradación / saponificación</span>
                         <span className="font-mono font-semibold">{sapNivel}</span>
                       </div>
 
@@ -585,7 +585,7 @@ function Dashboard() {
                       <OptRow label="Relación molar" target={`1 : ${ratioSugerido}`} actual={inputs.relacionMolar || "—"} />
                       <OptRow label="Catalizador" target={`${LIMITS.catalizadorMin}–${LIMITS.catalizadorMax}%`} actual={inputs.catalizador ? `${inputs.catalizador}%` : "—"} />
                       <OptRow label="Temperatura" target={`${LIMITS.tempMin}–${LIMITS.tempMax}°C`} actual={inputs.temperatura ? `${inputs.temperatura}°C` : "—"} />
-                      <OptRow label="Etanol/kg" target={`${masaEtanolPorKg} g`} actual="Estequio." />
+                      <OptRow label="Esterificante/kg" target={`${masaEtanolPorKg} g`} actual="Estequio." />
                     </div>
                   </div>
 
@@ -594,24 +594,24 @@ function Dashboard() {
                       <TrendingUp className="h-3.5 w-3.5" /> Recomendaciones de Proceso
                     </h4>
                     <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
-                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Mantener T entre {LIMITS.tempMin}–{LIMITS.tempMax}°C para evitar evaporación del etanol y maximizar cinética.</li>
-                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Exceso de etanol (1:6) desplaza el equilibrio hacia los ésteres etílicos.</li>
-                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Catalizador (NaOH/KOH) por encima de 1.5% promueve saponificación indeseada.</li>
-                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Agitación constante a 300–600 rpm durante 60–90 min.</li>
-                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Decantación mínima 8 h para separar glicerina del éster.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Mantener T entre {LIMITS.tempMin}–{LIMITS.tempMax}°C para evitar evaporación del esterificante y preservar la estabilidad térmica del aislante.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Exceso de esterificante (1:6) desplaza el equilibrio hacia ésteres de alta rigidez dieléctrica.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Catalizador (NaOH/KOH) por encima de 1.5% promueve saponificación y reduce la resistividad volumétrica.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Agitación constante a 300–600 rpm durante 60–90 min para uniformidad del biodisolvente.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Decantación mínima 8 h para separar glicerina y trazas conductivas del biodisolvente.</li>
                     </ul>
                   </div>
 
                   <div className="rounded-md border border-border bg-background p-3">
                     <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
-                      <Gauge className="h-3.5 w-3.5" /> Eficiencia Energética Estimada
+                      <Gauge className="h-3.5 w-3.5" /> Eficiencia Aislante Estimada
                     </h4>
                     {numericsValid ? (
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         {tempFueraRango ? (
-                          <>Temperatura <span className="font-mono text-destructive">{parsed.temperatura}°C</span> fuera del óptimo: pérdida estimada de conversión ≈ <span className="font-mono">8–15%</span>.</>
+                          <>Temperatura <span className="font-mono text-destructive">{parsed.temperatura}°C</span> fuera del óptimo: pérdida estimada de rigidez dieléctrica ≈ <span className="font-mono">8–15%</span>.</>
                         ) : (
-                          <>Temperatura dentro del rango óptimo. Conversión esperada ≥ <span className="font-mono text-emerald-500">95%</span> en 60 min.</>
+                          <>Temperatura dentro del rango óptimo. Rigidez dieléctrica esperada ≥ <span className="font-mono text-emerald-500">30 kV / 2.5 mm</span> (ASTM D877).</>
                         )}
                       </p>
                     ) : (
@@ -622,8 +622,9 @@ function Dashboard() {
                   </div>
 
                   <p className="text-[11px] text-muted-foreground italic leading-relaxed">
-                    Nota: la optimización combina caracterización de la materia prima con las
-                    condiciones de reacción para maximizar el rendimiento del éster etílico.
+                    Nota: la optimización combina caracterización del aceite base con las condiciones
+                    de proceso para maximizar el desempeño dieléctrico y la estabilidad operativa
+                    del biodisolvente.
                   </p>
                 </TabsContent>
               </Tabs>
