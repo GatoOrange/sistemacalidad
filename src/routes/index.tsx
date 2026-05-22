@@ -736,7 +736,7 @@ function Dashboard() {
                     <div className="text-sm">
                       <p className="font-semibold">Estabilidad Térmica Comprometida</p>
                       <p className="text-muted-foreground mt-1">
-                        Temperatura {parsed.temperatura}°C fuera del rango operativo seguro ({LIMITS.tempMin}–{LIMITS.tempMax}°C).
+                        Temperatura {parsed.tempOperativa}°C fuera del rango operativo seguro ({LIMITS.tempOpMin}–{LIMITS.tempOpMax}°C).
                         Ajustar para preservar el desempeño aislante y la seguridad industrial.
                       </p>
                     </div>
@@ -798,18 +798,24 @@ function Dashboard() {
 
                   <ReportGroup title="Caracterización Química" icon={<Atom className="h-4 w-4" />}>
                     <ReportRow label="Índice de Acidez" value={`${parsed.acidez} mg KOH/g`} ok={!criticoAcidez} critical />
-                    <ReportRow label="Índice de Saponificación" value={`${parsed.saponificacion}`}
-                      ok={parsed.saponificacion >= LIMITS.saponificacionMin && parsed.saponificacion <= LIMITS.saponificacionMax} />
-                    <ReportRow label="Índice de Peróxidos" value={`${parsed.peroxidos} meq/kg`}
-                      ok={parsed.peroxidos <= LIMITS.peroxidosMax} />
+                    <ReportRow label="Rigidez Dieléctrica" value={`${parsed.rigidez} kV`}
+                      ok={parsed.rigidez >= LIMITS.rigidezMin} critical />
+                    <ReportRow label="Conductividad Eléctrica" value={`${parsed.conductividad} pS/m`}
+                      ok={parsed.conductividad <= LIMITS.conductividadMax} />
+                    <ReportRow label="Punto de Inflamación" value={`${parsed.inflamacion} °C`}
+                      ok={parsed.inflamacion >= LIMITS.inflamacionMin} />
+                    <ReportRow label="Estabilidad Oxidativa" value={`${parsed.oxidacion} h`}
+                      ok={parsed.oxidacion >= LIMITS.oxidacionMin} />
                   </ReportGroup>
 
                   <ReportGroup title="Variables de Control Operativo" icon={<Settings2 className="h-4 w-4" />}>
-                    <ReportRow label="Relación Molar Esterificante/Aceite" value={`${parsed.relacionMolar} : 1`}
-                      ok={parsed.relacionMolar >= 5 && parsed.relacionMolar <= 9} />
-                    <ReportRow label="Concentración Catalizador" value={`${parsed.catalizador} %`}
-                      ok={parsed.catalizador >= LIMITS.catalizadorMin && parsed.catalizador <= LIMITS.catalizadorMax} />
-                    <ReportRow label="Temperatura de Proceso" value={`${parsed.temperatura} °C`} ok={!tempFueraRango} />
+                    <ReportRow label="Temperatura Operativa" value={`${parsed.tempOperativa} °C`} ok={!tempFueraRango} />
+                    <ReportRow label="Compatibilidad Dieléctrica" value={`${parsed.compatibilidad} %`}
+                      ok={parsed.compatibilidad >= LIMITS.compatibilidadMin} />
+                    <ReportRow label="Pureza del Biodisolvente" value={`${parsed.pureza} %`}
+                      ok={parsed.pureza >= LIMITS.purezaMin} />
+                    <ReportRow label="Nivel de Contaminación" value={`${parsed.contaminacion} ppm`}
+                      ok={!contaminacionAlta} critical />
                   </ReportGroup>
                 </div>
 
@@ -838,16 +844,16 @@ function Dashboard() {
                   </div>
                 </div>
 
-                {/* Estequiometría */}
+                {/* Indicadores Dieléctricos */}
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Formulación Estequiométrica de Referencia
+                    Indicadores Dieléctricos de Referencia
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <MetricBox label="Relación molar sugerida" value={`1 : ${ratioSugerido}`}
-                      sub="Maximiza rendimiento del biodisolvente" />
-                    <MetricBox label="Esterificante requerido" value={`${masaEtanolPorKg} g/kg`}
-                      sub="Por kg de aceite base procesado" />
+                    <MetricBox label="Rigidez dieléctrica mínima" value={`${LIMITS.rigidezMin} kV`}
+                      sub="ASTM D877 · 2.5 mm" />
+                    <MetricBox label="Conductividad máxima" value={`${LIMITS.conductividadMax} pS/m`}
+                      sub="IEC 60247 · aislante" />
                   </div>
                 </div>
 
