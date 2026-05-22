@@ -194,7 +194,7 @@ function Dashboard() {
   if (optValid && optR > 9) { rendimiento -= 2; penal.push("Exceso de alcohol −2%"); }
   rendimiento = Math.max(0, Math.min(100, rendimiento));
 
-  const masaBiodiesel = optValid ? optKg * (rendimiento / 100) : 0;
+  const masaBiodisolvente = optValid ? optKg * (rendimiento / 100) : 0;
   const conversion = Math.max(0, Math.min(99, rendimiento - 2));
 
   // Riesgo de saponificación
