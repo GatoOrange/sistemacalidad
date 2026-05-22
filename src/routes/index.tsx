@@ -246,7 +246,7 @@ function Dashboard() {
         ["densidad", "viscosidad", "humedad"].some(
           (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
         ) || !inputs.color || !inputs.aspecto;
-      const quimicaIncompleta = ["acidez", "saponificacion", "peroxidos"].some(
+      const quimicaIncompleta = ["acidez", "rigidez", "conductividad", "inflamacion", "oxidacion"].some(
         (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
       );
       if (fisicaIncompleta) setTab("fisica");
@@ -282,15 +282,18 @@ function Dashboard() {
     doc.text("2. Caracterización Química", 14, y); y += 7;
     doc.setFontSize(10);
     doc.text(`• Índice de Acidez: ${parsed.acidez} mg KOH/g (límite ≤ ${LIMITS.acidez})`, 18, y); y += 6;
-    doc.text(`• Índice de Saponificación: ${parsed.saponificacion} (rango ${LIMITS.saponificacionMin}-${LIMITS.saponificacionMax})`, 18, y); y += 6;
-    doc.text(`• Índice de Peróxidos: ${parsed.peroxidos} meq/kg (límite ≤ ${LIMITS.peroxidosMax})`, 18, y); y += 10;
+    doc.text(`• Rigidez Dieléctrica: ${parsed.rigidez} kV/2.5mm (mínimo ≥ ${LIMITS.rigidezMin})`, 18, y); y += 6;
+    doc.text(`• Conductividad Eléctrica: ${parsed.conductividad} pS/m (límite ≤ ${LIMITS.conductividadMax})`, 18, y); y += 6;
+    doc.text(`• Punto de Inflamación: ${parsed.inflamacion} °C (mínimo ≥ ${LIMITS.inflamacionMin})`, 18, y); y += 6;
+    doc.text(`• Estabilidad Oxidativa: ${parsed.oxidacion} h (mínimo ≥ ${LIMITS.oxidacionMin})`, 18, y); y += 10;
 
     doc.setFontSize(12);
     doc.text("3. Variables de Control Operativo", 14, y); y += 7;
     doc.setFontSize(10);
-    doc.text(`• Relación molar esterificante/aceite: ${parsed.relacionMolar} (sugerido ${ratioSugerido}:1)`, 18, y); y += 6;
-    doc.text(`• Concentración de catalizador: ${parsed.catalizador} % (rango ${LIMITS.catalizadorMin}-${LIMITS.catalizadorMax})`, 18, y); y += 6;
-    doc.text(`• Temperatura de proceso: ${parsed.temperatura} °C (rango ${LIMITS.tempMin}-${LIMITS.tempMax})`, 18, y); y += 12;
+    doc.text(`• Temperatura operativa: ${parsed.tempOperativa} °C (rango ${LIMITS.tempOpMin}-${LIMITS.tempOpMax})`, 18, y); y += 6;
+    doc.text(`• Compatibilidad dieléctrica: ${parsed.compatibilidad} % (mínimo ≥ ${LIMITS.compatibilidadMin})`, 18, y); y += 6;
+    doc.text(`• Pureza del biodisolvente: ${parsed.pureza} % (mínimo ≥ ${LIMITS.purezaMin})`, 18, y); y += 6;
+    doc.text(`• Nivel de contaminación: ${parsed.contaminacion} ppm (límite ≤ ${LIMITS.contaminacionMax})`, 18, y); y += 12;
 
     doc.setFontSize(12);
     doc.text(`Resultado: ${viable ? "APTO" : "NO APTO"}`, 14, y); y += 8;
@@ -303,7 +306,13 @@ function Dashboard() {
       doc.text("Cumple parametros de calidad para uso como biodisolvente dielectrico.", 14, y); y += 6;
     }
     if (tempFueraRango) {
-      doc.text(`! Estabilidad termica comprometida: T fuera de ${LIMITS.tempMin}-${LIMITS.tempMax} C.`, 14, y); y += 6;
+      doc.text(`! Estabilidad termica comprometida: T fuera de ${LIMITS.tempOpMin}-${LIMITS.tempOpMax} C.`, 14, y); y += 6;
+    }
+    if (criticoRigidez) {
+      doc.text(`! Rigidez dielectrica ${parsed.rigidez} kV por debajo del minimo (${LIMITS.rigidezMin}).`, 14, y); y += 6;
+    }
+    if (contaminacionAlta) {
+      doc.text(`! Contaminacion ${parsed.contaminacion} ppm excede limite (${LIMITS.contaminacionMax}).`, 14, y); y += 6;
     }
     if (alertaVisual) {
       doc.text("! Pre-tratamiento recomendado: filtracion/refinacion por aspecto o color.", 14, y); y += 6;
