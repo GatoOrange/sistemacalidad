@@ -479,24 +479,33 @@ function Dashboard() {
                   <FieldInput icon={<Beaker className="h-4 w-4" />} label="Índice de Acidez" unit="mg KOH/g"
                     value={inputs.acidez} onChange={handleChange("acidez")}
                     hint={`Crítico ≤ ${LIMITS.acidez}`} />
-                  <FieldInput icon={<Beaker className="h-4 w-4" />} label="Índice de Saponificación" unit="mg KOH/g"
-                    value={inputs.saponificacion} onChange={handleChange("saponificacion")}
-                    hint={`Rango ${LIMITS.saponificacionMin}–${LIMITS.saponificacionMax}`} />
-                  <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Índice de Peróxidos" unit="meq/kg"
-                    value={inputs.peroxidos} onChange={handleChange("peroxidos")}
-                    hint={`Límite ≤ ${LIMITS.peroxidosMax}`} />
+                  <FieldInput icon={<Zap className="h-4 w-4" />} label="Rigidez Dieléctrica" unit="kV"
+                    value={inputs.rigidez} onChange={handleChange("rigidez")}
+                    hint={`Mínimo ≥ ${LIMITS.rigidezMin} (ASTM D877)`} />
+                  <FieldInput icon={<Activity className="h-4 w-4" />} label="Conductividad Eléctrica" unit="pS/m"
+                    value={inputs.conductividad} onChange={handleChange("conductividad")}
+                    hint={`Límite ≤ ${LIMITS.conductividadMax} (IEC 60247)`} />
+                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Punto de Inflamación" unit="°C"
+                    value={inputs.inflamacion} onChange={handleChange("inflamacion")}
+                    hint={`Mínimo ≥ ${LIMITS.inflamacionMin} (ASTM D92)`} />
+                  <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Estabilidad Oxidativa" unit="h"
+                    value={inputs.oxidacion} onChange={handleChange("oxidacion")}
+                    hint={`Mínimo ≥ ${LIMITS.oxidacionMin} h`} />
                 </TabsContent>
 
                 <TabsContent value="control" className="space-y-4 mt-4">
-                  <FieldInput icon={<Atom className="h-4 w-4" />} label="Relación Molar Esterificante/Aceite" unit=":1"
-                    value={inputs.relacionMolar} onChange={handleChange("relacionMolar")}
-                    hint={`Sugerido ${ratioSugerido}:1`} />
-                  <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Concentración Catalizador" unit="%"
-                    value={inputs.catalizador} onChange={handleChange("catalizador")}
-                    hint={`Rango ${LIMITS.catalizadorMin}–${LIMITS.catalizadorMax}`} />
-                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura de Proceso" unit="°C"
-                    value={inputs.temperatura} onChange={handleChange("temperatura")}
-                    hint={`Óptimo ${LIMITS.tempMin}–${LIMITS.tempMax}`} />
+                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura Operativa" unit="°C"
+                    value={inputs.tempOperativa} onChange={handleChange("tempOperativa")}
+                    hint={`Rango ${LIMITS.tempOpMin}–${LIMITS.tempOpMax}`} />
+                  <FieldInput icon={<Zap className="h-4 w-4" />} label="Compatibilidad Dieléctrica" unit="%"
+                    value={inputs.compatibilidad} onChange={handleChange("compatibilidad")}
+                    hint={`Mínimo ≥ ${LIMITS.compatibilidadMin}`} />
+                  <FieldInput icon={<Droplets className="h-4 w-4" />} label="Pureza del Biodisolvente" unit="%"
+                    value={inputs.pureza} onChange={handleChange("pureza")}
+                    hint={`Mínimo ≥ ${LIMITS.purezaMin}`} />
+                  <FieldInput icon={<AlertTriangle className="h-4 w-4" />} label="Nivel de Contaminación" unit="ppm"
+                    value={inputs.contaminacion} onChange={handleChange("contaminacion")}
+                    hint={`Límite ≤ ${LIMITS.contaminacionMax}`} />
                 </TabsContent>
 
                 <TabsContent value="optimizacion" className="space-y-3 mt-4">
