@@ -612,10 +612,10 @@ function Dashboard() {
                       <Zap className="h-3.5 w-3.5" /> Parámetros Óptimos
                     </h4>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <OptRow label="Relación molar" target={`1 : ${ratioSugerido}`} actual={inputs.relacionMolar || "—"} />
-                      <OptRow label="Catalizador" target={`${LIMITS.catalizadorMin}–${LIMITS.catalizadorMax}%`} actual={inputs.catalizador ? `${inputs.catalizador}%` : "—"} />
-                      <OptRow label="Temperatura" target={`${LIMITS.tempMin}–${LIMITS.tempMax}°C`} actual={inputs.temperatura ? `${inputs.temperatura}°C` : "—"} />
-                      <OptRow label="Esterificante/kg" target={`${masaEtanolPorKg} g`} actual="Estequio." />
+                      <OptRow label="Temp. operativa" target={`${LIMITS.tempOpMin}–${LIMITS.tempOpMax}°C`} actual={inputs.tempOperativa ? `${inputs.tempOperativa}°C` : "—"} />
+                      <OptRow label="Rigidez dieléctrica" target={`≥ ${LIMITS.rigidezMin} kV`} actual={inputs.rigidez ? `${inputs.rigidez} kV` : "—"} />
+                      <OptRow label="Pureza" target={`≥ ${LIMITS.purezaMin}%`} actual={inputs.pureza ? `${inputs.pureza}%` : "—"} />
+                      <OptRow label="Contaminación" target={`≤ ${LIMITS.contaminacionMax} ppm`} actual={inputs.contaminacion ? `${inputs.contaminacion} ppm` : "—"} />
                     </div>
                   </div>
 
@@ -624,7 +624,7 @@ function Dashboard() {
                       <TrendingUp className="h-3.5 w-3.5" /> Recomendaciones de Proceso
                     </h4>
                     <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
-                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Mantener T entre {LIMITS.tempMin}–{LIMITS.tempMax}°C para evitar evaporación del esterificante y preservar la estabilidad térmica del aislante.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Mantener T operativa entre {LIMITS.tempOpMin}–{LIMITS.tempOpMax}°C para preservar la estabilidad térmica del aislante.</li>
                       <li className="flex gap-1.5"><span className="text-primary">▸</span>Exceso de esterificante (1:6) desplaza el equilibrio hacia ésteres de alta rigidez dieléctrica.</li>
                       <li className="flex gap-1.5"><span className="text-primary">▸</span>Catalizador (NaOH/KOH) por encima de 1.5% promueve saponificación y reduce la resistividad volumétrica.</li>
                       <li className="flex gap-1.5"><span className="text-primary">▸</span>Agitación constante a 300–600 rpm durante 60–90 min para uniformidad del biodisolvente.</li>
@@ -639,7 +639,7 @@ function Dashboard() {
                     {numericsValid ? (
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         {tempFueraRango ? (
-                          <>Temperatura <span className="font-mono text-destructive">{parsed.temperatura}°C</span> fuera del óptimo: pérdida estimada de rigidez dieléctrica ≈ <span className="font-mono">8–15%</span>.</>
+                          <>Temperatura <span className="font-mono text-destructive">{parsed.tempOperativa}°C</span> fuera del óptimo: pérdida estimada de rigidez dieléctrica ≈ <span className="font-mono">8–15%</span>.</>
                         ) : (
                           <>Temperatura dentro del rango óptimo. Rigidez dieléctrica esperada ≥ <span className="font-mono text-emerald-500">30 kV / 2.5 mm</span> (ASTM D877).</>
                         )}
