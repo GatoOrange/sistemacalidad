@@ -56,28 +56,33 @@ type Inputs = {
   aspecto: string; // 'limpio' | 'turbio'
   // Química
   acidez: string;
-  saponificacion: string;
-  peroxidos: string;
-  // Proceso
-  relacionMolar: string;
-  catalizador: string;
-  temperatura: string;
+  rigidez: string;        // kV / 2.5 mm
+  conductividad: string;  // pS/m
+  inflamacion: string;    // °C
+  oxidacion: string;      // h (estabilidad oxidativa)
+  // Control
+  tempOperativa: string;  // °C
+  compatibilidad: string; // % compatibilidad dieléctrica
+  pureza: string;         // %
+  contaminacion: string;  // ppm
 };
 
 const LIMITS = {
-  acidez: 2,         // mg KOH/g — crítico
-  humedad: 0.05,     // % — crítico
-  tempMin: 60,       // °C
-  tempMax: 80,       // °C
-  densidadMin: 860,  // kg/m³
+  acidez: 0.06,        // mg KOH/g — ASTM D6871
+  humedad: 0.05,       // % — crítico
+  densidadMin: 860,    // kg/m³
   densidadMax: 900,
-  viscosidadMin: 3.5,// cSt
-  viscosidadMax: 5.0,
-  saponificacionMin: 188,
-  saponificacionMax: 200,
-  peroxidosMax: 10,  // meq/kg
-  catalizadorMin: 0.5,
-  catalizadorMax: 1.5,
+  viscosidadMin: 3.5,  // cSt
+  viscosidadMax: 12,   // cSt
+  rigidezMin: 30,      // kV / 2.5 mm (ASTM D877)
+  conductividadMax: 50,// pS/m (IEC 60247)
+  inflamacionMin: 130, // °C (ASTM D92)
+  oxidacionMin: 48,    // h
+  tempOpMin: 40,       // °C
+  tempOpMax: 90,       // °C
+  compatibilidadMin: 95, // %
+  purezaMin: 99,       // %
+  contaminacionMax: 100, // ppm
 };
 
 const initialInputs: Inputs = {
@@ -87,11 +92,14 @@ const initialInputs: Inputs = {
   color: "",
   aspecto: "",
   acidez: "",
-  saponificacion: "",
-  peroxidos: "",
-  relacionMolar: "",
-  catalizador: "",
-  temperatura: "",
+  rigidez: "",
+  conductividad: "",
+  inflamacion: "",
+  oxidacion: "",
+  tempOperativa: "",
+  compatibilidad: "",
+  pureza: "",
+  contaminacion: "",
 };
 
 type ColorOpt = { id: string; label: string; hex: string; warn?: boolean };
