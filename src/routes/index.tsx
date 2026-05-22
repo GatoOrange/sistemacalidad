@@ -56,28 +56,33 @@ type Inputs = {
   aspecto: string; // 'limpio' | 'turbio'
   // Química
   acidez: string;
-  saponificacion: string;
-  peroxidos: string;
-  // Proceso
-  relacionMolar: string;
-  catalizador: string;
-  temperatura: string;
+  rigidez: string;        // kV / 2.5 mm
+  conductividad: string;  // pS/m
+  inflamacion: string;    // °C
+  oxidacion: string;      // h (estabilidad oxidativa)
+  // Control
+  tempOperativa: string;  // °C
+  compatibilidad: string; // % compatibilidad dieléctrica
+  pureza: string;         // %
+  contaminacion: string;  // ppm
 };
 
 const LIMITS = {
-  acidez: 2,         // mg KOH/g — crítico
-  humedad: 0.05,     // % — crítico
-  tempMin: 60,       // °C
-  tempMax: 80,       // °C
-  densidadMin: 860,  // kg/m³
+  acidez: 0.06,        // mg KOH/g — ASTM D6871
+  humedad: 0.05,       // % — crítico
+  densidadMin: 860,    // kg/m³
   densidadMax: 900,
-  viscosidadMin: 3.5,// cSt
-  viscosidadMax: 5.0,
-  saponificacionMin: 188,
-  saponificacionMax: 200,
-  peroxidosMax: 10,  // meq/kg
-  catalizadorMin: 0.5,
-  catalizadorMax: 1.5,
+  viscosidadMin: 3.5,  // cSt
+  viscosidadMax: 12,   // cSt
+  rigidezMin: 30,      // kV / 2.5 mm (ASTM D877)
+  conductividadMax: 50,// pS/m (IEC 60247)
+  inflamacionMin: 130, // °C (ASTM D92)
+  oxidacionMin: 48,    // h
+  tempOpMin: 40,       // °C
+  tempOpMax: 90,       // °C
+  compatibilidadMin: 95, // %
+  purezaMin: 99,       // %
+  contaminacionMax: 100, // ppm
 };
 
 const initialInputs: Inputs = {
@@ -87,11 +92,14 @@ const initialInputs: Inputs = {
   color: "",
   aspecto: "",
   acidez: "",
-  saponificacion: "",
-  peroxidos: "",
-  relacionMolar: "",
-  catalizador: "",
-  temperatura: "",
+  rigidez: "",
+  conductividad: "",
+  inflamacion: "",
+  oxidacion: "",
+  tempOperativa: "",
+  compatibilidad: "",
+  pureza: "",
+  contaminacion: "",
 };
 
 type ColorOpt = { id: string; label: string; hex: string; warn?: boolean };
@@ -138,11 +146,14 @@ function Dashboard() {
       viscosidad: parseFloat(inputs.viscosidad),
       humedad: parseFloat(inputs.humedad),
       acidez: parseFloat(inputs.acidez),
-      saponificacion: parseFloat(inputs.saponificacion),
-      peroxidos: parseFloat(inputs.peroxidos),
-      relacionMolar: parseFloat(inputs.relacionMolar),
-      catalizador: parseFloat(inputs.catalizador),
-      temperatura: parseFloat(inputs.temperatura),
+      rigidez: parseFloat(inputs.rigidez),
+      conductividad: parseFloat(inputs.conductividad),
+      inflamacion: parseFloat(inputs.inflamacion),
+      oxidacion: parseFloat(inputs.oxidacion),
+      tempOperativa: parseFloat(inputs.tempOperativa),
+      compatibilidad: parseFloat(inputs.compatibilidad),
+      pureza: parseFloat(inputs.pureza),
+      contaminacion: parseFloat(inputs.contaminacion),
     }),
     [inputs],
   );
@@ -161,12 +172,12 @@ function Dashboard() {
     visualValid && (inputs.color === "marron" || inputs.aspecto === "turbio");
   const viable = allValid && !criticoAcidez && !criticoHumedad;
 
+  const criticoRigidez =
+    allValid && parsed.rigidez < LIMITS.rigidezMin;
   const tempFueraRango =
-    allValid && (parsed.temperatura < LIMITS.tempMin || parsed.temperatura > LIMITS.tempMax);
-
-  // Estequiometría sugerida
-  const ratioSugerido = 6;
-  const masaEtanolPorKg = ((6 * 46) / 880 * 1000).toFixed(1);
+    allValid && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax);
+  const contaminacionAlta =
+    allValid && parsed.contaminacion > LIMITS.contaminacionMax;
 
   // ===== Cálculos de optimización (tiempo real) =====
   const MW = { etanol: 46, metanol: 32, aceite: 880 };
@@ -185,7 +196,7 @@ function Dashboard() {
   const penal: string[] = [];
   if (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad) { rendimiento -= 10; penal.push("Humedad alta −10%"); }
   if (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez) { rendimiento -= 15; penal.push("Acidez crítica −15%"); }
-  if (!isNaN(parsed.temperatura) && (parsed.temperatura < LIMITS.tempMin || parsed.temperatura > LIMITS.tempMax)) {
+  if (!isNaN(parsed.tempOperativa) && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax)) {
     rendimiento -= 8; penal.push("T fuera de rango −8%");
   }
   if (inputs.color === "marron") { rendimiento -= 5; penal.push("Color oscuro −5%"); }
@@ -201,7 +212,7 @@ function Dashboard() {
   const sapScore =
     (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad ? 2 : 0) +
     (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez ? 2 : 0) +
-    (optValid && optC > LIMITS.catalizadorMax ? 2 : 0) +
+    (!isNaN(parsed.contaminacion) && parsed.contaminacion > LIMITS.contaminacionMax ? 2 : 0) +
     (inputs.aspecto === "turbio" ? 1 : 0);
   const sapNivel = sapScore >= 3 ? "Alto" : sapScore >= 1 ? "Medio" : "Bajo";
 
@@ -215,8 +226,9 @@ function Dashboard() {
         { name: "Acidez", Permitido: LIMITS.acidez, Real: parsed.acidez },
         { name: "Humedad", Permitido: LIMITS.humedad, Real: parsed.humedad },
         { name: "Viscosidad", Permitido: LIMITS.viscosidadMax, Real: parsed.viscosidad },
-        { name: "Peróxidos", Permitido: LIMITS.peroxidosMax, Real: parsed.peroxidos },
-        { name: "Temp. (°C)", Permitido: LIMITS.tempMax, Real: parsed.temperatura },
+        { name: "Rigidez (kV)", Permitido: LIMITS.rigidezMin, Real: parsed.rigidez },
+        { name: "Conductiv.", Permitido: LIMITS.conductividadMax, Real: parsed.conductividad },
+        { name: "Temp. (°C)", Permitido: LIMITS.tempOpMax, Real: parsed.tempOperativa },
       ]
     : [];
 
@@ -234,7 +246,7 @@ function Dashboard() {
         ["densidad", "viscosidad", "humedad"].some(
           (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
         ) || !inputs.color || !inputs.aspecto;
-      const quimicaIncompleta = ["acidez", "saponificacion", "peroxidos"].some(
+      const quimicaIncompleta = ["acidez", "rigidez", "conductividad", "inflamacion", "oxidacion"].some(
         (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
       );
       if (fisicaIncompleta) setTab("fisica");
@@ -270,15 +282,18 @@ function Dashboard() {
     doc.text("2. Caracterización Química", 14, y); y += 7;
     doc.setFontSize(10);
     doc.text(`• Índice de Acidez: ${parsed.acidez} mg KOH/g (límite ≤ ${LIMITS.acidez})`, 18, y); y += 6;
-    doc.text(`• Índice de Saponificación: ${parsed.saponificacion} (rango ${LIMITS.saponificacionMin}-${LIMITS.saponificacionMax})`, 18, y); y += 6;
-    doc.text(`• Índice de Peróxidos: ${parsed.peroxidos} meq/kg (límite ≤ ${LIMITS.peroxidosMax})`, 18, y); y += 10;
+    doc.text(`• Rigidez Dieléctrica: ${parsed.rigidez} kV/2.5mm (mínimo ≥ ${LIMITS.rigidezMin})`, 18, y); y += 6;
+    doc.text(`• Conductividad Eléctrica: ${parsed.conductividad} pS/m (límite ≤ ${LIMITS.conductividadMax})`, 18, y); y += 6;
+    doc.text(`• Punto de Inflamación: ${parsed.inflamacion} °C (mínimo ≥ ${LIMITS.inflamacionMin})`, 18, y); y += 6;
+    doc.text(`• Estabilidad Oxidativa: ${parsed.oxidacion} h (mínimo ≥ ${LIMITS.oxidacionMin})`, 18, y); y += 10;
 
     doc.setFontSize(12);
     doc.text("3. Variables de Control Operativo", 14, y); y += 7;
     doc.setFontSize(10);
-    doc.text(`• Relación molar esterificante/aceite: ${parsed.relacionMolar} (sugerido ${ratioSugerido}:1)`, 18, y); y += 6;
-    doc.text(`• Concentración de catalizador: ${parsed.catalizador} % (rango ${LIMITS.catalizadorMin}-${LIMITS.catalizadorMax})`, 18, y); y += 6;
-    doc.text(`• Temperatura de proceso: ${parsed.temperatura} °C (rango ${LIMITS.tempMin}-${LIMITS.tempMax})`, 18, y); y += 12;
+    doc.text(`• Temperatura operativa: ${parsed.tempOperativa} °C (rango ${LIMITS.tempOpMin}-${LIMITS.tempOpMax})`, 18, y); y += 6;
+    doc.text(`• Compatibilidad dieléctrica: ${parsed.compatibilidad} % (mínimo ≥ ${LIMITS.compatibilidadMin})`, 18, y); y += 6;
+    doc.text(`• Pureza del biodisolvente: ${parsed.pureza} % (mínimo ≥ ${LIMITS.purezaMin})`, 18, y); y += 6;
+    doc.text(`• Nivel de contaminación: ${parsed.contaminacion} ppm (límite ≤ ${LIMITS.contaminacionMax})`, 18, y); y += 12;
 
     doc.setFontSize(12);
     doc.text(`Resultado: ${viable ? "APTO" : "NO APTO"}`, 14, y); y += 8;
@@ -291,7 +306,13 @@ function Dashboard() {
       doc.text("Cumple parametros de calidad para uso como biodisolvente dielectrico.", 14, y); y += 6;
     }
     if (tempFueraRango) {
-      doc.text(`! Estabilidad termica comprometida: T fuera de ${LIMITS.tempMin}-${LIMITS.tempMax} C.`, 14, y); y += 6;
+      doc.text(`! Estabilidad termica comprometida: T fuera de ${LIMITS.tempOpMin}-${LIMITS.tempOpMax} C.`, 14, y); y += 6;
+    }
+    if (criticoRigidez) {
+      doc.text(`! Rigidez dielectrica ${parsed.rigidez} kV por debajo del minimo (${LIMITS.rigidezMin}).`, 14, y); y += 6;
+    }
+    if (contaminacionAlta) {
+      doc.text(`! Contaminacion ${parsed.contaminacion} ppm excede limite (${LIMITS.contaminacionMax}).`, 14, y); y += 6;
     }
     if (alertaVisual) {
       doc.text("! Pre-tratamiento recomendado: filtracion/refinacion por aspecto o color.", 14, y); y += 6;
@@ -458,24 +479,33 @@ function Dashboard() {
                   <FieldInput icon={<Beaker className="h-4 w-4" />} label="Índice de Acidez" unit="mg KOH/g"
                     value={inputs.acidez} onChange={handleChange("acidez")}
                     hint={`Crítico ≤ ${LIMITS.acidez}`} />
-                  <FieldInput icon={<Beaker className="h-4 w-4" />} label="Índice de Saponificación" unit="mg KOH/g"
-                    value={inputs.saponificacion} onChange={handleChange("saponificacion")}
-                    hint={`Rango ${LIMITS.saponificacionMin}–${LIMITS.saponificacionMax}`} />
-                  <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Índice de Peróxidos" unit="meq/kg"
-                    value={inputs.peroxidos} onChange={handleChange("peroxidos")}
-                    hint={`Límite ≤ ${LIMITS.peroxidosMax}`} />
+                  <FieldInput icon={<Zap className="h-4 w-4" />} label="Rigidez Dieléctrica" unit="kV"
+                    value={inputs.rigidez} onChange={handleChange("rigidez")}
+                    hint={`Mínimo ≥ ${LIMITS.rigidezMin} (ASTM D877)`} />
+                  <FieldInput icon={<Activity className="h-4 w-4" />} label="Conductividad Eléctrica" unit="pS/m"
+                    value={inputs.conductividad} onChange={handleChange("conductividad")}
+                    hint={`Límite ≤ ${LIMITS.conductividadMax} (IEC 60247)`} />
+                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Punto de Inflamación" unit="°C"
+                    value={inputs.inflamacion} onChange={handleChange("inflamacion")}
+                    hint={`Mínimo ≥ ${LIMITS.inflamacionMin} (ASTM D92)`} />
+                  <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Estabilidad Oxidativa" unit="h"
+                    value={inputs.oxidacion} onChange={handleChange("oxidacion")}
+                    hint={`Mínimo ≥ ${LIMITS.oxidacionMin} h`} />
                 </TabsContent>
 
                 <TabsContent value="control" className="space-y-4 mt-4">
-                  <FieldInput icon={<Atom className="h-4 w-4" />} label="Relación Molar Esterificante/Aceite" unit=":1"
-                    value={inputs.relacionMolar} onChange={handleChange("relacionMolar")}
-                    hint={`Sugerido ${ratioSugerido}:1`} />
-                  <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Concentración Catalizador" unit="%"
-                    value={inputs.catalizador} onChange={handleChange("catalizador")}
-                    hint={`Rango ${LIMITS.catalizadorMin}–${LIMITS.catalizadorMax}`} />
-                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura de Proceso" unit="°C"
-                    value={inputs.temperatura} onChange={handleChange("temperatura")}
-                    hint={`Óptimo ${LIMITS.tempMin}–${LIMITS.tempMax}`} />
+                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura Operativa" unit="°C"
+                    value={inputs.tempOperativa} onChange={handleChange("tempOperativa")}
+                    hint={`Rango ${LIMITS.tempOpMin}–${LIMITS.tempOpMax}`} />
+                  <FieldInput icon={<Zap className="h-4 w-4" />} label="Compatibilidad Dieléctrica" unit="%"
+                    value={inputs.compatibilidad} onChange={handleChange("compatibilidad")}
+                    hint={`Mínimo ≥ ${LIMITS.compatibilidadMin}`} />
+                  <FieldInput icon={<Droplets className="h-4 w-4" />} label="Pureza del Biodisolvente" unit="%"
+                    value={inputs.pureza} onChange={handleChange("pureza")}
+                    hint={`Mínimo ≥ ${LIMITS.purezaMin}`} />
+                  <FieldInput icon={<AlertTriangle className="h-4 w-4" />} label="Nivel de Contaminación" unit="ppm"
+                    value={inputs.contaminacion} onChange={handleChange("contaminacion")}
+                    hint={`Límite ≤ ${LIMITS.contaminacionMax}`} />
                 </TabsContent>
 
                 <TabsContent value="optimizacion" className="space-y-3 mt-4">
@@ -582,10 +612,10 @@ function Dashboard() {
                       <Zap className="h-3.5 w-3.5" /> Parámetros Óptimos
                     </h4>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <OptRow label="Relación molar" target={`1 : ${ratioSugerido}`} actual={inputs.relacionMolar || "—"} />
-                      <OptRow label="Catalizador" target={`${LIMITS.catalizadorMin}–${LIMITS.catalizadorMax}%`} actual={inputs.catalizador ? `${inputs.catalizador}%` : "—"} />
-                      <OptRow label="Temperatura" target={`${LIMITS.tempMin}–${LIMITS.tempMax}°C`} actual={inputs.temperatura ? `${inputs.temperatura}°C` : "—"} />
-                      <OptRow label="Esterificante/kg" target={`${masaEtanolPorKg} g`} actual="Estequio." />
+                      <OptRow label="Temp. operativa" target={`${LIMITS.tempOpMin}–${LIMITS.tempOpMax}°C`} actual={inputs.tempOperativa ? `${inputs.tempOperativa}°C` : "—"} />
+                      <OptRow label="Rigidez dieléctrica" target={`≥ ${LIMITS.rigidezMin} kV`} actual={inputs.rigidez ? `${inputs.rigidez} kV` : "—"} />
+                      <OptRow label="Pureza" target={`≥ ${LIMITS.purezaMin}%`} actual={inputs.pureza ? `${inputs.pureza}%` : "—"} />
+                      <OptRow label="Contaminación" target={`≤ ${LIMITS.contaminacionMax} ppm`} actual={inputs.contaminacion ? `${inputs.contaminacion} ppm` : "—"} />
                     </div>
                   </div>
 
@@ -594,7 +624,7 @@ function Dashboard() {
                       <TrendingUp className="h-3.5 w-3.5" /> Recomendaciones de Proceso
                     </h4>
                     <ul className="text-[11px] text-muted-foreground space-y-1.5 leading-relaxed">
-                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Mantener T entre {LIMITS.tempMin}–{LIMITS.tempMax}°C para evitar evaporación del esterificante y preservar la estabilidad térmica del aislante.</li>
+                      <li className="flex gap-1.5"><span className="text-primary">▸</span>Mantener T operativa entre {LIMITS.tempOpMin}–{LIMITS.tempOpMax}°C para preservar la estabilidad térmica del aislante.</li>
                       <li className="flex gap-1.5"><span className="text-primary">▸</span>Exceso de esterificante (1:6) desplaza el equilibrio hacia ésteres de alta rigidez dieléctrica.</li>
                       <li className="flex gap-1.5"><span className="text-primary">▸</span>Catalizador (NaOH/KOH) por encima de 1.5% promueve saponificación y reduce la resistividad volumétrica.</li>
                       <li className="flex gap-1.5"><span className="text-primary">▸</span>Agitación constante a 300–600 rpm durante 60–90 min para uniformidad del biodisolvente.</li>
@@ -609,7 +639,7 @@ function Dashboard() {
                     {numericsValid ? (
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         {tempFueraRango ? (
-                          <>Temperatura <span className="font-mono text-destructive">{parsed.temperatura}°C</span> fuera del óptimo: pérdida estimada de rigidez dieléctrica ≈ <span className="font-mono">8–15%</span>.</>
+                          <>Temperatura <span className="font-mono text-destructive">{parsed.tempOperativa}°C</span> fuera del óptimo: pérdida estimada de rigidez dieléctrica ≈ <span className="font-mono">8–15%</span>.</>
                         ) : (
                           <>Temperatura dentro del rango óptimo. Rigidez dieléctrica esperada ≥ <span className="font-mono text-emerald-500">30 kV / 2.5 mm</span> (ASTM D877).</>
                         )}
@@ -706,7 +736,7 @@ function Dashboard() {
                     <div className="text-sm">
                       <p className="font-semibold">Estabilidad Térmica Comprometida</p>
                       <p className="text-muted-foreground mt-1">
-                        Temperatura {parsed.temperatura}°C fuera del rango operativo seguro ({LIMITS.tempMin}–{LIMITS.tempMax}°C).
+                        Temperatura {parsed.tempOperativa}°C fuera del rango operativo seguro ({LIMITS.tempOpMin}–{LIMITS.tempOpMax}°C).
                         Ajustar para preservar el desempeño aislante y la seguridad industrial.
                       </p>
                     </div>
@@ -768,18 +798,24 @@ function Dashboard() {
 
                   <ReportGroup title="Caracterización Química" icon={<Atom className="h-4 w-4" />}>
                     <ReportRow label="Índice de Acidez" value={`${parsed.acidez} mg KOH/g`} ok={!criticoAcidez} critical />
-                    <ReportRow label="Índice de Saponificación" value={`${parsed.saponificacion}`}
-                      ok={parsed.saponificacion >= LIMITS.saponificacionMin && parsed.saponificacion <= LIMITS.saponificacionMax} />
-                    <ReportRow label="Índice de Peróxidos" value={`${parsed.peroxidos} meq/kg`}
-                      ok={parsed.peroxidos <= LIMITS.peroxidosMax} />
+                    <ReportRow label="Rigidez Dieléctrica" value={`${parsed.rigidez} kV`}
+                      ok={parsed.rigidez >= LIMITS.rigidezMin} critical />
+                    <ReportRow label="Conductividad Eléctrica" value={`${parsed.conductividad} pS/m`}
+                      ok={parsed.conductividad <= LIMITS.conductividadMax} />
+                    <ReportRow label="Punto de Inflamación" value={`${parsed.inflamacion} °C`}
+                      ok={parsed.inflamacion >= LIMITS.inflamacionMin} />
+                    <ReportRow label="Estabilidad Oxidativa" value={`${parsed.oxidacion} h`}
+                      ok={parsed.oxidacion >= LIMITS.oxidacionMin} />
                   </ReportGroup>
 
                   <ReportGroup title="Variables de Control Operativo" icon={<Settings2 className="h-4 w-4" />}>
-                    <ReportRow label="Relación Molar Esterificante/Aceite" value={`${parsed.relacionMolar} : 1`}
-                      ok={parsed.relacionMolar >= 5 && parsed.relacionMolar <= 9} />
-                    <ReportRow label="Concentración Catalizador" value={`${parsed.catalizador} %`}
-                      ok={parsed.catalizador >= LIMITS.catalizadorMin && parsed.catalizador <= LIMITS.catalizadorMax} />
-                    <ReportRow label="Temperatura de Proceso" value={`${parsed.temperatura} °C`} ok={!tempFueraRango} />
+                    <ReportRow label="Temperatura Operativa" value={`${parsed.tempOperativa} °C`} ok={!tempFueraRango} />
+                    <ReportRow label="Compatibilidad Dieléctrica" value={`${parsed.compatibilidad} %`}
+                      ok={parsed.compatibilidad >= LIMITS.compatibilidadMin} />
+                    <ReportRow label="Pureza del Biodisolvente" value={`${parsed.pureza} %`}
+                      ok={parsed.pureza >= LIMITS.purezaMin} />
+                    <ReportRow label="Nivel de Contaminación" value={`${parsed.contaminacion} ppm`}
+                      ok={!contaminacionAlta} critical />
                   </ReportGroup>
                 </div>
 
@@ -808,16 +844,16 @@ function Dashboard() {
                   </div>
                 </div>
 
-                {/* Estequiometría */}
+                {/* Indicadores Dieléctricos */}
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Formulación Estequiométrica de Referencia
+                    Indicadores Dieléctricos de Referencia
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <MetricBox label="Relación molar sugerida" value={`1 : ${ratioSugerido}`}
-                      sub="Maximiza rendimiento del biodisolvente" />
-                    <MetricBox label="Esterificante requerido" value={`${masaEtanolPorKg} g/kg`}
-                      sub="Por kg de aceite base procesado" />
+                    <MetricBox label="Rigidez dieléctrica mínima" value={`${LIMITS.rigidezMin} kV`}
+                      sub="ASTM D877 · 2.5 mm" />
+                    <MetricBox label="Conductividad máxima" value={`${LIMITS.conductividadMax} pS/m`}
+                      sub="IEC 60247 · aislante" />
                   </div>
                 </div>
 
