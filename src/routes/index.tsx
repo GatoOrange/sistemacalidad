@@ -146,11 +146,14 @@ function Dashboard() {
       viscosidad: parseFloat(inputs.viscosidad),
       humedad: parseFloat(inputs.humedad),
       acidez: parseFloat(inputs.acidez),
-      saponificacion: parseFloat(inputs.saponificacion),
-      peroxidos: parseFloat(inputs.peroxidos),
-      relacionMolar: parseFloat(inputs.relacionMolar),
-      catalizador: parseFloat(inputs.catalizador),
-      temperatura: parseFloat(inputs.temperatura),
+      rigidez: parseFloat(inputs.rigidez),
+      conductividad: parseFloat(inputs.conductividad),
+      inflamacion: parseFloat(inputs.inflamacion),
+      oxidacion: parseFloat(inputs.oxidacion),
+      tempOperativa: parseFloat(inputs.tempOperativa),
+      compatibilidad: parseFloat(inputs.compatibilidad),
+      pureza: parseFloat(inputs.pureza),
+      contaminacion: parseFloat(inputs.contaminacion),
     }),
     [inputs],
   );
@@ -169,12 +172,12 @@ function Dashboard() {
     visualValid && (inputs.color === "marron" || inputs.aspecto === "turbio");
   const viable = allValid && !criticoAcidez && !criticoHumedad;
 
+  const criticoRigidez =
+    allValid && parsed.rigidez < LIMITS.rigidezMin;
   const tempFueraRango =
-    allValid && (parsed.temperatura < LIMITS.tempMin || parsed.temperatura > LIMITS.tempMax);
-
-  // Estequiometría sugerida
-  const ratioSugerido = 6;
-  const masaEtanolPorKg = ((6 * 46) / 880 * 1000).toFixed(1);
+    allValid && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax);
+  const contaminacionAlta =
+    allValid && parsed.contaminacion > LIMITS.contaminacionMax;
 
   // ===== Cálculos de optimización (tiempo real) =====
   const MW = { etanol: 46, metanol: 32, aceite: 880 };
@@ -193,7 +196,7 @@ function Dashboard() {
   const penal: string[] = [];
   if (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad) { rendimiento -= 10; penal.push("Humedad alta −10%"); }
   if (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez) { rendimiento -= 15; penal.push("Acidez crítica −15%"); }
-  if (!isNaN(parsed.temperatura) && (parsed.temperatura < LIMITS.tempMin || parsed.temperatura > LIMITS.tempMax)) {
+  if (!isNaN(parsed.tempOperativa) && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax)) {
     rendimiento -= 8; penal.push("T fuera de rango −8%");
   }
   if (inputs.color === "marron") { rendimiento -= 5; penal.push("Color oscuro −5%"); }
@@ -209,7 +212,7 @@ function Dashboard() {
   const sapScore =
     (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad ? 2 : 0) +
     (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez ? 2 : 0) +
-    (optValid && optC > LIMITS.catalizadorMax ? 2 : 0) +
+    (!isNaN(parsed.contaminacion) && parsed.contaminacion > LIMITS.contaminacionMax ? 2 : 0) +
     (inputs.aspecto === "turbio" ? 1 : 0);
   const sapNivel = sapScore >= 3 ? "Alto" : sapScore >= 1 ? "Medio" : "Bajo";
 
@@ -223,8 +226,9 @@ function Dashboard() {
         { name: "Acidez", Permitido: LIMITS.acidez, Real: parsed.acidez },
         { name: "Humedad", Permitido: LIMITS.humedad, Real: parsed.humedad },
         { name: "Viscosidad", Permitido: LIMITS.viscosidadMax, Real: parsed.viscosidad },
-        { name: "Peróxidos", Permitido: LIMITS.peroxidosMax, Real: parsed.peroxidos },
-        { name: "Temp. (°C)", Permitido: LIMITS.tempMax, Real: parsed.temperatura },
+        { name: "Rigidez (kV)", Permitido: LIMITS.rigidezMin, Real: parsed.rigidez },
+        { name: "Conductiv.", Permitido: LIMITS.conductividadMax, Real: parsed.conductividad },
+        { name: "Temp. (°C)", Permitido: LIMITS.tempOpMax, Real: parsed.tempOperativa },
       ]
     : [];
 
