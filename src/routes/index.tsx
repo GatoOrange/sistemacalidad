@@ -543,7 +543,7 @@ function Dashboard() {
                       <div className="grid grid-cols-2 gap-2">
                         <OptRow label={`${optAlcohol} requerido`} target={`${masaAlcoholKg.toFixed(2)} kg`} actual={`${molesAlcohol.toFixed(1)} mol`} />
                         <OptRow label="Catalizador req." target={`${(masaCatKg * 1000).toFixed(1)} g`} actual={`${optC}%`} />
-                        <OptRow label="Biodisolvente estimado" target={`${masaBiodiesel.toFixed(2)} kg`} actual={`${rendimiento.toFixed(0)}%`} />
+                        <OptRow label="Biodisolvente estimado" target={`${masaBiodisolvente.toFixed(2)} kg`} actual={`${rendimiento.toFixed(0)}%`} />
                         <OptRow label="Conversión estimada" target={`${conversion.toFixed(0)}%`} actual={`η ${eficiencia}%`} />
                       </div>
 
