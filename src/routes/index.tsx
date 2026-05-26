@@ -234,14 +234,34 @@ function Dashboard() {
   const criticoHumedad = numericsValid && parsed.humedad > LIMITS.humedad;
   const alertaVisual =
     visualValid && (inputs.color === "marron" || inputs.aspecto === "turbio");
-  const viable = allValid && !criticoAcidez && !criticoHumedad;
-
   const criticoRigidez =
     allValid && parsed.rigidez < LIMITS.rigidezMin;
   const tempFueraRango =
     allValid && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax);
   const contaminacionAlta =
     allValid && parsed.contaminacion > LIMITS.contaminacionMax;
+  const criticoConductividad =
+    allValid && parsed.conductividad > LIMITS.conductividadMax;
+  const oxidacionBaja =
+    allValid && parsed.oxidacion < LIMITS.oxidacionMin;
+
+  // NO VIABLE si: humedad alta, conductividad elevada, baja rigidez o contaminación excesiva
+  const noViable =
+    criticoHumedad || criticoConductividad || criticoRigidez || contaminacionAlta;
+  const viable = allValid && !criticoAcidez && !noViable;
+
+  // Indicador global: Óptimo / Precaución / Crítico
+  const precauciones =
+    (tempFueraRango ? 1 : 0) +
+    (oxidacionBaja ? 1 : 0) +
+    (alertaVisual ? 1 : 0);
+  const estadoGlobal: "optimo" | "precaucion" | "critico" = !allValid
+    ? "precaucion"
+    : !viable
+      ? "critico"
+      : precauciones > 0
+        ? "precaucion"
+        : "optimo";
 
   // ===== Cálculos de optimización (tiempo real) =====
   const MW = { etanol: 46, metanol: 32, aceite: 880 };
