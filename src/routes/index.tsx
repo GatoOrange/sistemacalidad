@@ -129,6 +129,67 @@ function Dashboard() {
   const [optRatio, setOptRatio] = useState("6");
   const [optCat, setOptCat] = useState("1");
 
+  // ===== Integración en tiempo real: condiciones ambientales (Open-Meteo) =====
+  type Ambient = {
+    temp: number;
+    humidity: number;
+    wind: number;
+    pressure: number;
+    code: number;
+    time: string;
+    place: string;
+  };
+  const [ambient, setAmbient] = useState<Ambient | null>(null);
+  const [ambientLoading, setAmbientLoading] = useState(false);
+  const [ambientError, setAmbientError] = useState<string | null>(null);
+
+  const fetchAmbient = async () => {
+    setAmbientLoading(true);
+    setAmbientError(null);
+    try {
+      // Bogotá, Colombia — planta de referencia. Sin API key.
+      const url =
+        "https://api.open-meteo.com/v1/forecast?latitude=4.7110&longitude=-74.0721" +
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code" +
+        "&timezone=America%2FBogota";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const c = json.current ?? {};
+      setAmbient({
+        temp: Number(c.temperature_2m),
+        humidity: Number(c.relative_humidity_2m),
+        wind: Number(c.wind_speed_10m),
+        pressure: Number(c.surface_pressure),
+        code: Number(c.weather_code),
+        time: String(c.time ?? ""),
+        place: "Bogotá, CO",
+      });
+    } catch (e) {
+      setAmbientError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setAmbientLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAmbient();
+    const id = setInterval(fetchAmbient, 5 * 60 * 1000); // refresco cada 5 min
+    return () => clearInterval(id);
+  }, []);
+
+  // Recomendación operativa basada en clima en vivo
+  const ambientRecommendation = useMemo(() => {
+    if (!ambient) return null;
+    // T ambiente alta ⇒ subir T operativa para mantener viscosidad estable
+    // Humedad ambiente alta ⇒ activar secado al vacío preventivo
+    const tSugerida = Math.round(
+      Math.max(LIMITS.tempOpMin, Math.min(LIMITS.tempOpMax, ambient.temp + 35)),
+    );
+    const riesgoHumedad = ambient.humidity >= 75;
+    return { tSugerida, riesgoHumedad };
+  }, [ambient]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (localStorage.getItem("isLoggedIn") !== "true") {
