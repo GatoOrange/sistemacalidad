@@ -1205,3 +1205,41 @@ function ProgressBar({ label, value, tone }: { label: string; value: number; ton
     </div>
   );
 }
+
+function StatusBadge({ level }: { level: "optimo" | "precaucion" | "critico" }) {
+  const map = {
+    optimo: { label: "Óptimo", cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-500" },
+    precaucion: { label: "Precaución", cls: "border-amber-500/40 bg-amber-500/10 text-amber-500" },
+    critico: { label: "Crítico", cls: "border-destructive/50 bg-destructive/10 text-destructive" },
+  } as const;
+  const m = map[level];
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${m.cls}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {m.label}
+    </span>
+  );
+}
+
+function AlertCard({
+  level, title, body,
+}: { level: "optimo" | "precaucion" | "critico"; title: string; body: string }) {
+  const cls =
+    level === "critico"
+      ? "border-destructive/50 bg-destructive/5 text-destructive"
+      : level === "precaucion"
+        ? "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400"
+        : "border-emerald-500/40 bg-emerald-500/5 text-emerald-500";
+  return (
+    <div className={`rounded-xl border p-4 flex items-start gap-3 ${cls}`}>
+      <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+      <div className="text-sm flex-1">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="font-semibold text-foreground">{title}</p>
+          <StatusBadge level={level} />
+        </div>
+        <p className="text-muted-foreground mt-1">{body}</p>
+      </div>
+    </div>
+  );
+}
