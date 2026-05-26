@@ -873,13 +873,18 @@ function Dashboard() {
                       <AlertTriangle className="h-6 w-6 text-destructive shrink-0" />
                     )}
                     <div className="flex-1">
-                      <h3 className="font-semibold">
-                        {viable ? "Lote APTO como Biodisolvente Dieléctrico" : "Lote NO APTO — Estado crítico"}
-                      </h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">
+                          {viable ? "Lote VIABLE como Biodisolvente Dieléctrico" : "Lote NO VIABLE"}
+                        </h3>
+                        <StatusBadge level={estadoGlobal} />
+                      </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {viable
-                          ? "Cumple los límites críticos de calidad. Apto para uso como aislante líquido."
-                          : "Acidez o humedad exceden los límites críticos. Se compromete la rigidez dieléctrica."}
+                          ? precauciones > 0
+                            ? "Cumple los límites críticos pero presenta condiciones a vigilar."
+                            : "Cumple todos los límites críticos. Apto para uso como aislante líquido."
+                          : "Uno o más parámetros críticos están fuera de tolerancia (humedad, conductividad, rigidez o contaminación)."}
                       </p>
                     </div>
                   </div>
@@ -898,10 +903,55 @@ function Dashboard() {
                             Humedad {parsed.humedad}% &gt; {LIMITS.humedad}% → <strong>Deshidratación al vacío</strong> (105°C, &lt;1 kPa) para preservar rigidez dieléctrica.
                           </li>
                         )}
+                        {criticoConductividad && (
+                          <li>
+                            Conductividad {parsed.conductividad} &gt; {LIMITS.conductividadMax} pS/m → <strong>Refinado adicional</strong> para reducir compuestos polares conductivos.
+                          </li>
+                        )}
+                        {criticoRigidez && (
+                          <li>
+                            Rigidez {parsed.rigidez} &lt; {LIMITS.rigidezMin} kV → <strong>Reproceso/secado</strong>; lote no apto como aislante.
+                          </li>
+                        )}
+                        {contaminacionAlta && (
+                          <li>
+                            Contaminación {parsed.contaminacion} &gt; {LIMITS.contaminacionMax} ppm → <strong>Filtración fina</strong> y control de fuentes de contaminación.
+                          </li>
+                        )}
                       </ul>
                     </div>
                   )}
                 </div>
+
+                {/* Advertencias automáticas */}
+                {criticoHumedad && (
+                  <AlertCard
+                    level="critico"
+                    title="Riesgo de pérdida de capacidad aislante"
+                    body={`Humedad ${parsed.humedad}% excede el límite (${LIMITS.humedad}%). El agua libre reduce drásticamente la rigidez dieléctrica del biodisolvente.`}
+                  />
+                )}
+                {criticoConductividad && (
+                  <AlertCard
+                    level="critico"
+                    title="Riesgo operativo eléctrico"
+                    body={`Conductividad ${parsed.conductividad} pS/m supera el máximo (${LIMITS.conductividadMax} pS/m). Posibles fugas y calentamiento en servicio.`}
+                  />
+                )}
+                {oxidacionBaja && (
+                  <AlertCard
+                    level="precaucion"
+                    title="Posible degradación del biodisolvente"
+                    body={`Estabilidad oxidativa ${parsed.oxidacion} h por debajo de ${LIMITS.oxidacionMin} h. Vida útil reducida y formación de sedimentos a mediano plazo.`}
+                  />
+                )}
+                {alertaVisual && (
+                  <AlertCard
+                    level="precaucion"
+                    title="Filtración o refinación recomendada"
+                    body={`${inputs.color === "marron" ? "Color oscuro detectado. " : ""}${inputs.aspecto === "turbio" ? "Aspecto turbio o con sedimentos. " : ""}Realizar filtración fina y/o refinación con tierras activadas antes de uso.`}
+                  />
+                )}
 
                 {tempFueraRango && (
                   <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
