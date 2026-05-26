@@ -19,6 +19,10 @@ import {
   Settings2,
   TrendingUp,
   Zap,
+  Wind,
+  CloudSun,
+  MapPin,
+  RefreshCw,
 } from "lucide-react";
 import {
   BarChart,
