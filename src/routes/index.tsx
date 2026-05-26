@@ -967,21 +967,11 @@ function Dashboard() {
                 )}
 
                 {alertaVisual && (
-                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-semibold">Pre-tratamiento Recomendado</p>
-                      <p className="text-muted-foreground mt-1">
-                        {inputs.color === "marron" && "Color marrón oscuro detectado. "}
-                        {inputs.aspecto === "turbio" && "Aspecto turbio o con sedimentos. "}
-                        Se recomienda <strong>filtración</strong> y/o <strong>refinación adicional</strong>
-                        antes del proceso de formulación del biodisolvente.
-                      </p>
-                      <p className="text-xs text-muted-foreground italic mt-2">
-                        El color oscuro está asociado a compuestos polares y oxidación que reducen la rigidez dieléctrica.
-                      </p>
-                    </div>
-                  </div>
+                  <AlertCard
+                    level="precaucion"
+                    title="Pre-tratamiento sugerido por inspección visual"
+                    body="El color oscuro está asociado a compuestos polares y oxidación que reducen la rigidez dieléctrica."
+                  />
                 )}
 
                 {/* Reporte agrupado */}
