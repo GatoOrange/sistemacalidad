@@ -234,14 +234,34 @@ function Dashboard() {
   const criticoHumedad = numericsValid && parsed.humedad > LIMITS.humedad;
   const alertaVisual =
     visualValid && (inputs.color === "marron" || inputs.aspecto === "turbio");
-  const viable = allValid && !criticoAcidez && !criticoHumedad;
-
   const criticoRigidez =
     allValid && parsed.rigidez < LIMITS.rigidezMin;
   const tempFueraRango =
     allValid && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax);
   const contaminacionAlta =
     allValid && parsed.contaminacion > LIMITS.contaminacionMax;
+  const criticoConductividad =
+    allValid && parsed.conductividad > LIMITS.conductividadMax;
+  const oxidacionBaja =
+    allValid && parsed.oxidacion < LIMITS.oxidacionMin;
+
+  // NO VIABLE si: humedad alta, conductividad elevada, baja rigidez o contaminación excesiva
+  const noViable =
+    criticoHumedad || criticoConductividad || criticoRigidez || contaminacionAlta;
+  const viable = allValid && !criticoAcidez && !noViable;
+
+  // Indicador global: Óptimo / Precaución / Crítico
+  const precauciones =
+    (tempFueraRango ? 1 : 0) +
+    (oxidacionBaja ? 1 : 0) +
+    (alertaVisual ? 1 : 0);
+  const estadoGlobal: "optimo" | "precaucion" | "critico" = !allValid
+    ? "precaucion"
+    : !viable
+      ? "critico"
+      : precauciones > 0
+        ? "precaucion"
+        : "optimo";
 
   // ===== Cálculos de optimización (tiempo real) =====
   const MW = { etanol: 46, metanol: 32, aceite: 880 };
@@ -853,13 +873,18 @@ function Dashboard() {
                       <AlertTriangle className="h-6 w-6 text-destructive shrink-0" />
                     )}
                     <div className="flex-1">
-                      <h3 className="font-semibold">
-                        {viable ? "Lote APTO como Biodisolvente Dieléctrico" : "Lote NO APTO — Estado crítico"}
-                      </h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold">
+                          {viable ? "Lote VIABLE como Biodisolvente Dieléctrico" : "Lote NO VIABLE"}
+                        </h3>
+                        <StatusBadge level={estadoGlobal} />
+                      </div>
                       <p className="text-sm text-muted-foreground mt-1">
                         {viable
-                          ? "Cumple los límites críticos de calidad. Apto para uso como aislante líquido."
-                          : "Acidez o humedad exceden los límites críticos. Se compromete la rigidez dieléctrica."}
+                          ? precauciones > 0
+                            ? "Cumple los límites críticos pero presenta condiciones a vigilar."
+                            : "Cumple todos los límites críticos. Apto para uso como aislante líquido."
+                          : "Uno o más parámetros críticos están fuera de tolerancia (humedad, conductividad, rigidez o contaminación)."}
                       </p>
                     </div>
                   </div>
@@ -878,10 +903,55 @@ function Dashboard() {
                             Humedad {parsed.humedad}% &gt; {LIMITS.humedad}% → <strong>Deshidratación al vacío</strong> (105°C, &lt;1 kPa) para preservar rigidez dieléctrica.
                           </li>
                         )}
+                        {criticoConductividad && (
+                          <li>
+                            Conductividad {parsed.conductividad} &gt; {LIMITS.conductividadMax} pS/m → <strong>Refinado adicional</strong> para reducir compuestos polares conductivos.
+                          </li>
+                        )}
+                        {criticoRigidez && (
+                          <li>
+                            Rigidez {parsed.rigidez} &lt; {LIMITS.rigidezMin} kV → <strong>Reproceso/secado</strong>; lote no apto como aislante.
+                          </li>
+                        )}
+                        {contaminacionAlta && (
+                          <li>
+                            Contaminación {parsed.contaminacion} &gt; {LIMITS.contaminacionMax} ppm → <strong>Filtración fina</strong> y control de fuentes de contaminación.
+                          </li>
+                        )}
                       </ul>
                     </div>
                   )}
                 </div>
+
+                {/* Advertencias automáticas */}
+                {criticoHumedad && (
+                  <AlertCard
+                    level="critico"
+                    title="Riesgo de pérdida de capacidad aislante"
+                    body={`Humedad ${parsed.humedad}% excede el límite (${LIMITS.humedad}%). El agua libre reduce drásticamente la rigidez dieléctrica del biodisolvente.`}
+                  />
+                )}
+                {criticoConductividad && (
+                  <AlertCard
+                    level="critico"
+                    title="Riesgo operativo eléctrico"
+                    body={`Conductividad ${parsed.conductividad} pS/m supera el máximo (${LIMITS.conductividadMax} pS/m). Posibles fugas y calentamiento en servicio.`}
+                  />
+                )}
+                {oxidacionBaja && (
+                  <AlertCard
+                    level="precaucion"
+                    title="Posible degradación del biodisolvente"
+                    body={`Estabilidad oxidativa ${parsed.oxidacion} h por debajo de ${LIMITS.oxidacionMin} h. Vida útil reducida y formación de sedimentos a mediano plazo.`}
+                  />
+                )}
+                {alertaVisual && (
+                  <AlertCard
+                    level="precaucion"
+                    title="Filtración o refinación recomendada"
+                    body={`${inputs.color === "marron" ? "Color oscuro detectado. " : ""}${inputs.aspecto === "turbio" ? "Aspecto turbio o con sedimentos. " : ""}Realizar filtración fina y/o refinación con tierras activadas antes de uso.`}
+                  />
+                )}
 
                 {tempFueraRango && (
                   <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
@@ -897,21 +967,11 @@ function Dashboard() {
                 )}
 
                 {alertaVisual && (
-                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-semibold">Pre-tratamiento Recomendado</p>
-                      <p className="text-muted-foreground mt-1">
-                        {inputs.color === "marron" && "Color marrón oscuro detectado. "}
-                        {inputs.aspecto === "turbio" && "Aspecto turbio o con sedimentos. "}
-                        Se recomienda <strong>filtración</strong> y/o <strong>refinación adicional</strong>
-                        antes del proceso de formulación del biodisolvente.
-                      </p>
-                      <p className="text-xs text-muted-foreground italic mt-2">
-                        El color oscuro está asociado a compuestos polares y oxidación que reducen la rigidez dieléctrica.
-                      </p>
-                    </div>
-                  </div>
+                  <AlertCard
+                    level="precaucion"
+                    title="Pre-tratamiento sugerido por inspección visual"
+                    body="El color oscuro está asociado a compuestos polares y oxidación que reducen la rigidez dieléctrica."
+                  />
                 )}
 
                 {/* Reporte agrupado */}
@@ -1141,6 +1201,44 @@ function ProgressBar({ label, value, tone }: { label: string; value: number; ton
       </div>
       <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
         <div className={`h-full ${color} transition-all`} style={{ width: `${v}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ level }: { level: "optimo" | "precaucion" | "critico" }) {
+  const map = {
+    optimo: { label: "Óptimo", cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-500" },
+    precaucion: { label: "Precaución", cls: "border-amber-500/40 bg-amber-500/10 text-amber-500" },
+    critico: { label: "Crítico", cls: "border-destructive/50 bg-destructive/10 text-destructive" },
+  } as const;
+  const m = map[level];
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${m.cls}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {m.label}
+    </span>
+  );
+}
+
+function AlertCard({
+  level, title, body,
+}: { level: "optimo" | "precaucion" | "critico"; title: string; body: string }) {
+  const cls =
+    level === "critico"
+      ? "border-destructive/50 bg-destructive/5 text-destructive"
+      : level === "precaucion"
+        ? "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400"
+        : "border-emerald-500/40 bg-emerald-500/5 text-emerald-500";
+  return (
+    <div className={`rounded-xl border p-4 flex items-start gap-3 ${cls}`}>
+      <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+      <div className="text-sm flex-1">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="font-semibold text-foreground">{title}</p>
+          <StatusBadge level={level} />
+        </div>
+        <p className="text-muted-foreground mt-1">{body}</p>
       </div>
     </div>
   );
