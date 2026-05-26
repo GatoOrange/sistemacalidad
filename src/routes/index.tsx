@@ -19,6 +19,9 @@ import {
   Settings2,
   TrendingUp,
   Zap,
+  CloudSun,
+  MapPin,
+  RefreshCw,
 } from "lucide-react";
 import {
   BarChart,
@@ -124,6 +127,67 @@ function Dashboard() {
   const [optAlcohol, setOptAlcohol] = useState<"etanol" | "metanol">("etanol");
   const [optRatio, setOptRatio] = useState("6");
   const [optCat, setOptCat] = useState("1");
+
+  // ===== Integración en tiempo real: condiciones ambientales (Open-Meteo) =====
+  type Ambient = {
+    temp: number;
+    humidity: number;
+    wind: number;
+    pressure: number;
+    code: number;
+    time: string;
+    place: string;
+  };
+  const [ambient, setAmbient] = useState<Ambient | null>(null);
+  const [ambientLoading, setAmbientLoading] = useState(false);
+  const [ambientError, setAmbientError] = useState<string | null>(null);
+
+  const fetchAmbient = async () => {
+    setAmbientLoading(true);
+    setAmbientError(null);
+    try {
+      // Bogotá, Colombia — planta de referencia. Sin API key.
+      const url =
+        "https://api.open-meteo.com/v1/forecast?latitude=4.7110&longitude=-74.0721" +
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code" +
+        "&timezone=America%2FBogota";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const c = json.current ?? {};
+      setAmbient({
+        temp: Number(c.temperature_2m),
+        humidity: Number(c.relative_humidity_2m),
+        wind: Number(c.wind_speed_10m),
+        pressure: Number(c.surface_pressure),
+        code: Number(c.weather_code),
+        time: String(c.time ?? ""),
+        place: "Bogotá, CO",
+      });
+    } catch (e) {
+      setAmbientError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setAmbientLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAmbient();
+    const id = setInterval(fetchAmbient, 5 * 60 * 1000); // refresco cada 5 min
+    return () => clearInterval(id);
+  }, []);
+
+  // Recomendación operativa basada en clima en vivo
+  const ambientRecommendation = useMemo(() => {
+    if (!ambient) return null;
+    // T ambiente alta ⇒ subir T operativa para mantener viscosidad estable
+    // Humedad ambiente alta ⇒ activar secado al vacío preventivo
+    const tSugerida = Math.round(
+      Math.max(LIMITS.tempOpMin, Math.min(LIMITS.tempOpMax, ambient.temp + 35)),
+    );
+    const riesgoHumedad = ambient.humidity >= 75;
+    return { tSugerida, riesgoHumedad };
+  }, [ambient]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -363,7 +427,12 @@ function Dashboard() {
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatCard icon={<Activity className="h-4 w-4" />} label="Estado planta" value="Operativa" tone="ok" />
-          <StatCard icon={<Gauge className="h-4 w-4" />} label="Lotes hoy" value="—" tone="muted" />
+          <StatCard
+            icon={<Thermometer className="h-4 w-4" />}
+            label="T. ambiente (vivo)"
+            value={ambient ? `${ambient.temp.toFixed(1)} °C` : ambientLoading ? "…" : "—"}
+            tone={ambient ? "ok" : "muted"}
+          />
           <StatCard icon={<Beaker className="h-4 w-4" />} label="Norma" value="ASTM D6871 / IEC 60296" tone="muted" />
           <StatCard
             icon={submitted && viable ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
@@ -372,6 +441,90 @@ function Dashboard() {
             tone={!submitted ? "muted" : viable ? "ok" : "danger"}
           />
         </div>
+
+        {/* Telemetría ambiental en tiempo real (Open-Meteo) */}
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <CloudSun className="h-4 w-4" /> Condiciones ambientales en vivo
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-normal normal-case">
+                <MapPin className="h-3 w-3" /> {ambient?.place ?? "Bogotá, CO"}
+              </span>
+              {ambient && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-normal normal-case">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  LIVE · Open-Meteo
+                </span>
+              )}
+            </h2>
+            <button
+              onClick={fetchAmbient}
+              disabled={ambientLoading}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border hover:bg-accent transition-colors text-xs font-medium disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${ambientLoading ? "animate-spin" : ""}`} />
+              Actualizar
+            </button>
+          </div>
+
+          {ambientError && (
+            <p className="text-xs text-destructive mb-3">No se pudo obtener telemetría: {ambientError}</p>
+          )}
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricBox
+              label="Temperatura"
+              value={ambient ? `${ambient.temp.toFixed(1)} °C` : "—"}
+              sub="Aire externo"
+            />
+            <MetricBox
+              label="Humedad relativa"
+              value={ambient ? `${ambient.humidity.toFixed(0)} %` : "—"}
+              sub={ambient && ambient.humidity >= 75 ? "Alta · riesgo de absorción" : "Dentro de tolerancia"}
+            />
+            <MetricBox
+              label="Viento"
+              value={ambient ? `${ambient.wind.toFixed(1)} km/h` : "—"}
+              sub="Ventilación de planta"
+            />
+            <MetricBox
+              label="Presión"
+              value={ambient ? `${ambient.pressure.toFixed(0)} hPa` : "—"}
+              sub="Superficie"
+            />
+          </div>
+
+          {ambientRecommendation && (
+            <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-xs text-foreground">
+                <p className="font-semibold flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                  Recomendación operativa en tiempo real
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  Con T. ambiente de <span className="font-mono text-foreground">{ambient!.temp.toFixed(1)} °C</span>,
+                  la temperatura operativa sugerida es{" "}
+                  <span className="font-mono text-primary">{ambientRecommendation.tSugerida} °C</span>.
+                  {ambientRecommendation.riesgoHumedad &&
+                    " Humedad ambiental alta: activar deshidratación al vacío preventiva."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setInputs((p) => ({
+                    ...p,
+                    tempOperativa: String(ambientRecommendation.tSugerida),
+                  }));
+                  setTab("control");
+                }}
+                className="self-start sm:self-center inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90"
+              >
+                Aplicar a Control
+              </button>
+            </div>
+          )}
+        </section>
 
         <div className="grid lg:grid-cols-5 gap-6">
           {/* Form con tabs */}
