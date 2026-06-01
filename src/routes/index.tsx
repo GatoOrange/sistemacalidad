@@ -1251,7 +1251,7 @@ function DielectricOptimization({
       {/* Gráfica dinámica */}
       <div className="rounded-md border border-border bg-background p-3">
         <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
-          <BarChart3 className="h-3.5 w-3.5" /> Comparativa de indicadores
+          <TrendingUp className="h-3.5 w-3.5" /> Comparativa de indicadores
         </h4>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
