@@ -1103,3 +1103,225 @@ function AlertCard({
     </div>
   );
 }
+
+function clamp(v: number, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function DielectricOptimization({
+  parsed,
+  numericsValid,
+  allValid,
+  aspectoTurbio,
+  colorOscuro,
+}: {
+  parsed: Record<string, number>;
+  numericsValid: boolean;
+  allValid: boolean;
+  aspectoTurbio: boolean;
+  colorOscuro: boolean;
+}) {
+  if (!numericsValid) {
+    return (
+      <div className="rounded-md border border-dashed border-border bg-background p-6 text-center text-xs text-muted-foreground">
+        Ingresa los parámetros físicos, químicos y de control para calcular en tiempo real
+        la optimización dieléctrica del biodisolvente.
+      </div>
+    );
+  }
+
+  const { humedad, viscosidad, rigidez, conductividad, oxidacion, tempOperativa } = parsed;
+
+  // ===== Indicadores 0–100 =====
+  // Eficiencia dieléctrica: depende de rigidez (≥30 kV) y conductividad (≤50 pS/m)
+  const idxRigidez = clamp((rigidez / LIMITS.rigidezMin) * 80);
+  const idxConduct = clamp(100 - (conductividad / LIMITS.conductividadMax) * 80);
+  const eficienciaDielectrica = clamp(idxRigidez * 0.6 + idxConduct * 0.4);
+
+  // Estabilidad térmica: cercanía al centro del rango y oxidación
+  const tMid = (LIMITS.tempOpMin + LIMITS.tempOpMax) / 2;
+  const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
+  const idxTemp = clamp(100 - (Math.abs(tempOperativa - tMid) / tSpan) * 100);
+  const idxOxid = clamp((oxidacion / LIMITS.oxidacionMin) * 90);
+  const estabilidadTermica = clamp(idxTemp * 0.55 + idxOxid * 0.45);
+
+  // Capacidad aislante: rigidez, humedad inversa, viscosidad en rango
+  const idxHumedad = clamp(100 - (humedad / LIMITS.humedad) * 100);
+  const viscOk =
+    viscosidad >= LIMITS.viscosidadMin && viscosidad <= LIMITS.viscosidadMax ? 100 : 60;
+  const capacidadAislante = clamp(idxRigidez * 0.5 + idxHumedad * 0.35 + viscOk * 0.15);
+
+  // Riesgo de degradación (mayor = peor): humedad, oxidación baja, aspecto/color
+  const riesgoDegradacion = clamp(
+    (humedad / LIMITS.humedad) * 35 +
+      Math.max(0, (LIMITS.oxidacionMin - oxidacion) / LIMITS.oxidacionMin) * 35 +
+      (aspectoTurbio ? 15 : 0) +
+      (colorOscuro ? 15 : 0),
+  );
+
+  // Desempeño operativo: promedio ponderado − penalización por riesgo
+  const desempenoOperativo = clamp(
+    eficienciaDielectrica * 0.35 +
+      estabilidadTermica * 0.25 +
+      capacidadAislante * 0.3 +
+      (100 - riesgoDegradacion) * 0.1,
+  );
+
+  const indicadores = [
+    { key: "Eficiencia dieléctrica", value: eficienciaDielectrica, unit: "%", invert: false },
+    { key: "Estabilidad térmica", value: estabilidadTermica, unit: "%", invert: false },
+    { key: "Capacidad aislante", value: capacidadAislante, unit: "%", invert: false },
+    { key: "Riesgo de degradación", value: riesgoDegradacion, unit: "%", invert: true },
+    { key: "Desempeño operativo", value: desempenoOperativo, unit: "%", invert: false },
+  ];
+
+  const levelOf = (value: number, invert: boolean): "optimo" | "precaucion" | "critico" => {
+    const v = invert ? 100 - value : value;
+    if (v >= 80) return "optimo";
+    if (v >= 55) return "precaucion";
+    return "critico";
+  };
+
+  const estadoTecnico = levelOf(desempenoOperativo, false);
+
+  const barData = indicadores.map((i) => ({
+    name: i.key.replace(" dieléctrica", "").replace(" de degradación", ""),
+    Valor: Math.round(i.value),
+    Óptimo: i.invert ? 20 : 80,
+  }));
+
+  return (
+    <div className="space-y-3">
+      {/* Encabezado de estado técnico */}
+      <div className="rounded-md border border-border bg-background p-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
+              <Gauge className="h-3.5 w-3.5" /> Estado técnico del biodisolvente
+            </h4>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Cálculo automático en tiempo real a partir de humedad, viscosidad, rigidez,
+              conductividad, estabilidad oxidativa y temperatura operativa.
+            </p>
+          </div>
+          <StatusBadge level={estadoTecnico} />
+        </div>
+        <div className="mt-3">
+          <ProgressBar
+            label="Desempeño operativo esperado"
+            value={desempenoOperativo}
+            tone={estadoTecnico === "optimo" ? "ok" : estadoTecnico === "precaucion" ? "warn" : "danger"}
+          />
+        </div>
+      </div>
+
+      {/* Indicadores industriales */}
+      <div className="rounded-md border border-border bg-background p-3 space-y-2">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
+          <TrendingUp className="h-3.5 w-3.5" /> Indicadores industriales
+        </h4>
+        <div className="grid grid-cols-2 gap-2">
+          {indicadores.map((i) => {
+            const lvl = levelOf(i.value, i.invert);
+            return (
+              <div key={i.key} className="rounded border border-border bg-card px-2.5 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {i.key}
+                  </p>
+                  <StatusBadge level={lvl} />
+                </div>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="font-mono text-lg font-semibold text-foreground">
+                    {i.value.toFixed(0)}
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{i.unit}</span>
+                </div>
+                <ProgressBar
+                  label=""
+                  value={i.invert ? 100 - i.value : i.value}
+                  tone={lvl === "optimo" ? "ok" : lvl === "precaucion" ? "warn" : "danger"}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Gráfica dinámica */}
+      <div className="rounded-md border border-border bg-background p-3">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
+          <BarChart3 className="h-3.5 w-3.5" /> Comparativa de indicadores
+        </h4>
+        <div className="h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={barData} margin={{ top: 5, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
+              <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
+              <Tooltip
+                contentStyle={{
+                  background: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 6,
+                  fontSize: 11,
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="Valor" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Óptimo" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Nivel de riesgo */}
+      <div className="rounded-md border border-border bg-background p-3 space-y-2">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
+          <AlertTriangle className="h-3.5 w-3.5" /> Niveles de riesgo
+        </h4>
+        {humedad > LIMITS.humedad && (
+          <AlertCard level="critico" title="Humedad excesiva" body="Riesgo de pérdida de capacidad aislante." />
+        )}
+        {conductividad > LIMITS.conductividadMax && (
+          <AlertCard level="critico" title="Conductividad elevada" body="Riesgo operativo eléctrico inminente." />
+        )}
+        {rigidez < LIMITS.rigidezMin && (
+          <AlertCard level="critico" title="Rigidez dieléctrica baja" body="No alcanza el mínimo ASTM D877 (≥ 30 kV)." />
+        )}
+        {oxidacion < LIMITS.oxidacionMin && (
+          <AlertCard level="precaucion" title="Estabilidad oxidativa baja" body="Posible degradación del biodisolvente." />
+        )}
+        {(tempOperativa < LIMITS.tempOpMin || tempOperativa > LIMITS.tempOpMax) && (
+          <AlertCard level="precaucion" title="Temperatura fuera de rango" body={`Operar entre ${LIMITS.tempOpMin}–${LIMITS.tempOpMax} °C para preservar la estabilidad térmica.`} />
+        )}
+        {humedad <= LIMITS.humedad &&
+          conductividad <= LIMITS.conductividadMax &&
+          rigidez >= LIMITS.rigidezMin &&
+          oxidacion >= LIMITS.oxidacionMin &&
+          tempOperativa >= LIMITS.tempOpMin &&
+          tempOperativa <= LIMITS.tempOpMax && (
+            <AlertCard level="optimo" title="Sin riesgos detectados" body="Todos los parámetros se encuentran dentro de los rangos óptimos de operación." />
+          )}
+      </div>
+
+      {/* Eficiencia operativa textual */}
+      <div className="rounded-md border border-border bg-background p-3">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
+          <Zap className="h-3.5 w-3.5" /> Eficiencia operativa
+        </h4>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Eficiencia dieléctrica estimada{" "}
+          <span className="font-mono text-foreground">{eficienciaDielectrica.toFixed(0)}%</span>,
+          estabilidad térmica{" "}
+          <span className="font-mono text-foreground">{estabilidadTermica.toFixed(0)}%</span>,
+          capacidad aislante{" "}
+          <span className="font-mono text-foreground">{capacidadAislante.toFixed(0)}%</span>.
+          Riesgo de degradación{" "}
+          <span className="font-mono text-foreground">{riesgoDegradacion.toFixed(0)}%</span>.
+          {allValid ? "" : " Completa todos los parámetros para una evaluación normativa completa."}
+        </p>
+      </div>
+    </div>
+  );
+}
