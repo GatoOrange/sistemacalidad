@@ -1087,18 +1087,6 @@ function ReportRow({
   );
 }
 
-function OptRow({ label, target, actual }: { label: string; target: string; actual: string }) {
-  return (
-    <div className="rounded border border-border bg-card px-2 py-1.5">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <div className="flex items-baseline justify-between gap-2 mt-0.5">
-        <span className="font-mono text-[11px] text-primary">{target}</span>
-        <span className="font-mono text-[11px] text-foreground">{actual}</span>
-      </div>
-    </div>
-  );
-}
-
 function ProgressBar({ label, value, tone }: { label: string; value: number; tone: "ok" | "warn" | "danger" }) {
   const v = Math.max(0, Math.min(100, value));
   const color =
