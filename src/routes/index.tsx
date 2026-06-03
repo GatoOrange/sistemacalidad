@@ -1149,6 +1149,47 @@ function clamp(v: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, v));
 }
 
+function DielectricIndicator({
+  label, value, invert, icon,
+}: { label: string; value: number; invert: boolean; icon: React.ReactNode }) {
+  const v = clamp(value);
+  const score = invert ? 100 - v : v;
+  const level: "optimo" | "precaucion" | "critico" =
+    score >= 80 ? "optimo" : score >= 55 ? "precaucion" : "critico";
+  const tone = level === "optimo" ? "ok" : level === "precaucion" ? "warn" : "danger";
+  return (
+    <div className="rounded-md border border-border bg-background px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          {icon}{label}
+        </p>
+        <StatusBadge level={level} />
+      </div>
+      <div className="flex items-baseline gap-1 mt-1 mb-1.5">
+        <span className="font-mono text-xl font-semibold text-foreground">{v.toFixed(0)}</span>
+        <span className="font-mono text-[10px] text-muted-foreground">%</span>
+      </div>
+      <ProgressBar label="" value={score} tone={tone} />
+    </div>
+  );
+}
+
+function RecMsg({ tone, text }: { tone: "ok" | "warn" | "danger"; text: string }) {
+  const cls =
+    tone === "ok"
+      ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
+      : tone === "warn"
+        ? "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400"
+        : "border-destructive/50 bg-destructive/5 text-destructive";
+  const Icon = tone === "ok" ? CheckCircle2 : AlertTriangle;
+  return (
+    <div className={`rounded-md border px-2.5 py-1.5 flex items-center gap-2 ${cls}`}>
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="font-medium">{text}</span>
+    </div>
+  );
+}
+
 function DielectricOptimization({
   parsed,
   numericsValid,
