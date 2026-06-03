@@ -268,7 +268,65 @@ function Dashboard() {
     const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
     const idxTemp = c(100 - (Math.abs(parsed.tempOperativa - tMid) / tSpan) * 100);
     const idxOxid = c((parsed.oxidacion / LIMITS.oxidacionMin) * 90);
-    const estabil
+    const estabilidadTermica = c(idxTemp * 0.55 + idxOxid * 0.45);
+    const idxHumedad = c(100 - (parsed.humedad / LIMITS.humedad) * 100);
+    const viscOk =
+      parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax
+        ? 100
+        : 60;
+    const capacidadAislante = c(idxRigidez * 0.5 + idxHumedad * 0.35 + viscOk * 0.15);
+    const riesgoOperativo = c(
+      (parsed.conductividad / LIMITS.conductividadMax) * 50 +
+        Math.max(0, (LIMITS.rigidezMin - parsed.rigidez) / LIMITS.rigidezMin) * 40 +
+        (parsed.contaminacion > LIMITS.contaminacionMax ? 20 : 0),
+    );
+    const estabilidadFluido = c(
+      idxOxid * 0.5 +
+        idxHumedad * 0.3 +
+        (inputs.aspecto === "turbio" ? 0 : 20) +
+        (inputs.color === "marron" ? 0 : 10),
+    );
+    return {
+      eficienciaDielectrica,
+      estabilidadTermica,
+      capacidadAislante,
+      riesgoOperativo,
+      estabilidadFluido,
+    };
+  }, [allValid, parsed, inputs.aspecto, inputs.color]);
+
+  const chartData = dielectric
+    ? [
+        { name: "Ef. Diel.", Valor: Math.round(dielectric.eficienciaDielectrica), Óptimo: 80 },
+        { name: "Est. Térm.", Valor: Math.round(dielectric.estabilidadTermica), Óptimo: 80 },
+        { name: "Cap. Aisl.", Valor: Math.round(dielectric.capacidadAislante), Óptimo: 80 },
+        { name: "Riesgo Op.", Valor: Math.round(dielectric.riesgoOperativo), Óptimo: 20 },
+        { name: "Est. Fluido", Valor: Math.round(dielectric.estabilidadFluido), Óptimo: 80 },
+      ]
+    : [];
+
+  // Recomendaciones automáticas dinámicas
+  const recomendaciones: { level: "optimo" | "precaucion" | "critico"; msg: string }[] = [];
+  if (dielectric) {
+    if (viable && precauciones === 0 && dielectric.desempenoOk !== false) {
+      recomendaciones.push({ level: "optimo", msg: "Fluido apto para aplicaciones dieléctricas" });
+    }
+    if (dielectric.eficienciaDielectrica >= 85 && dielectric.capacidadAislante >= 85) {
+      recomendaciones.push({ level: "optimo", msg: "Desempeño dieléctrico óptimo" });
+    }
+    if (dielectric.capacidadAislante < 60 || criticoHumedad) {
+      recomendaciones.push({ level: "critico", msg: "Capacidad aislante comprometida" });
+    }
+    if (criticoConductividad || dielectric.riesgoOperativo >= 60) {
+      recomendaciones.push({ level: "critico", msg: "Riesgo operativo eléctrico" });
+    }
+    if (alertaVisual || contaminacionAlta) {
+      recomendaciones.push({ level: "precaucion", msg: "Filtración recomendada" });
+    }
+    if (oxidacionBaja) {
+      recomendaciones.push({ level: "precaucion", msg: "Posible degradación oxidativa" });
+    }
+  }
 
   const handleChange =
     (key: keyof Inputs) => (e: React.ChangeEvent<HTMLInputElement>) => {
