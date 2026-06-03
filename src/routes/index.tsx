@@ -122,12 +122,6 @@ function Dashboard() {
   const [tab, setTab] = useState("fisica");
   const [error, setError] = useState<string | null>(null);
 
-  // Módulo de optimización
-  const [optCantidad, setOptCantidad] = useState("");
-  const [optAlcohol, setOptAlcohol] = useState<"etanol" | "metanol">("etanol");
-  const [optRatio, setOptRatio] = useState("6");
-  const [optCat, setOptCat] = useState("1");
-
   // ===== Integración en tiempo real: condiciones ambientales (Open-Meteo) =====
   type Ambient = {
     temp: number;
