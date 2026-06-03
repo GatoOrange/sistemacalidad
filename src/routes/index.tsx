@@ -308,7 +308,7 @@ function Dashboard() {
   // Recomendaciones automáticas dinámicas
   const recomendaciones: { level: "optimo" | "precaucion" | "critico"; msg: string }[] = [];
   if (dielectric) {
-    if (viable && precauciones === 0 && dielectric.desempenoOk !== false) {
+    if (viable && precauciones === 0) {
       recomendaciones.push({ level: "optimo", msg: "Fluido apto para aplicaciones dieléctricas" });
     }
     if (dielectric.eficienciaDielectrica >= 85 && dielectric.capacidadAislante >= 85) {
