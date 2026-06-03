@@ -122,6 +122,12 @@ function Dashboard() {
   const [tab, setTab] = useState("fisica");
   const [error, setError] = useState<string | null>(null);
 
+  // Módulo de optimización
+  const [optCantidad, setOptCantidad] = useState("");
+  const [optAlcohol, setOptAlcohol] = useState<"etanol" | "metanol">("etanol");
+  const [optRatio, setOptRatio] = useState("6");
+  const [optCat, setOptCat] = useState("1");
+
   // ===== Integración en tiempo real: condiciones ambientales (Open-Meteo) =====
   type Ambient = {
     temp: number;
@@ -257,76 +263,58 @@ function Dashboard() {
         ? "precaucion"
         : "optimo";
 
-  // ===== Indicadores dieléctricos (tiempo real) — compartidos por tarjetas y gráficas =====
-  const dielectric = useMemo(() => {
-    if (!allValid) return null;
-    const c = (v: number, min = 0, max = 100) => Math.max(min, Math.min(max, v));
-    const idxRigidez = c((parsed.rigidez / LIMITS.rigidezMin) * 80);
-    const idxConduct = c(100 - (parsed.conductividad / LIMITS.conductividadMax) * 80);
-    const eficienciaDielectrica = c(idxRigidez * 0.6 + idxConduct * 0.4);
-    const tMid = (LIMITS.tempOpMin + LIMITS.tempOpMax) / 2;
-    const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
-    const idxTemp = c(100 - (Math.abs(parsed.tempOperativa - tMid) / tSpan) * 100);
-    const idxOxid = c((parsed.oxidacion / LIMITS.oxidacionMin) * 90);
-    const estabilidadTermica = c(idxTemp * 0.55 + idxOxid * 0.45);
-    const idxHumedad = c(100 - (parsed.humedad / LIMITS.humedad) * 100);
-    const viscOk =
-      parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax
-        ? 100
-        : 60;
-    const capacidadAislante = c(idxRigidez * 0.5 + idxHumedad * 0.35 + viscOk * 0.15);
-    const riesgoOperativo = c(
-      (parsed.conductividad / LIMITS.conductividadMax) * 50 +
-        Math.max(0, (LIMITS.rigidezMin - parsed.rigidez) / LIMITS.rigidezMin) * 40 +
-        (parsed.contaminacion > LIMITS.contaminacionMax ? 20 : 0),
-    );
-    const estabilidadFluido = c(
-      idxOxid * 0.5 +
-        idxHumedad * 0.3 +
-        (inputs.aspecto === "turbio" ? 0 : 20) +
-        (inputs.color === "marron" ? 0 : 10),
-    );
-    return {
-      eficienciaDielectrica,
-      estabilidadTermica,
-      capacidadAislante,
-      riesgoOperativo,
-      estabilidadFluido,
-    };
-  }, [allValid, parsed, inputs.aspecto, inputs.color]);
+  // ===== Cálculos de optimización (tiempo real) =====
+  const MW = { etanol: 46, metanol: 32, aceite: 880 };
+  const optKg = parseFloat(optCantidad);
+  const optR = parseFloat(optRatio);
+  const optC = parseFloat(optCat);
+  const optValid = !isNaN(optKg) && optKg > 0 && !isNaN(optR) && !isNaN(optC);
 
-  const chartData = dielectric
+  const molesAceite = optValid ? (optKg * 1000) / MW.aceite : 0;
+  const molesAlcohol = molesAceite * (optR || 0);
+  const masaAlcoholKg = (molesAlcohol * MW[optAlcohol]) / 1000;
+  const masaCatKg = optValid ? optKg * ((optC || 0) / 100) : 0;
+
+  // Rendimiento: base 97% (metanol) / 95% (etanol), penalizaciones por calidad MP
+  let rendimiento = optAlcohol === "metanol" ? 97 : 95;
+  const penal: string[] = [];
+  if (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad) { rendimiento -= 10; penal.push("Humedad alta −10%"); }
+  if (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez) { rendimiento -= 15; penal.push("Acidez crítica −15%"); }
+  if (!isNaN(parsed.tempOperativa) && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax)) {
+    rendimiento -= 8; penal.push("T fuera de rango −8%");
+  }
+  if (inputs.color === "marron") { rendimiento -= 5; penal.push("Color oscuro −5%"); }
+  if (inputs.aspecto === "turbio") { rendimiento -= 3; penal.push("Aspecto turbio −3%"); }
+  if (optValid && optR < 5) { rendimiento -= 5; penal.push("Relación molar baja −5%"); }
+  if (optValid && optR > 9) { rendimiento -= 2; penal.push("Exceso de alcohol −2%"); }
+  rendimiento = Math.max(0, Math.min(100, rendimiento));
+
+  const masaBiodisolvente = optValid ? optKg * (rendimiento / 100) : 0;
+  const conversion = Math.max(0, Math.min(99, rendimiento - 2));
+
+  // Riesgo de saponificación
+  const sapScore =
+    (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad ? 2 : 0) +
+    (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez ? 2 : 0) +
+    (!isNaN(parsed.contaminacion) && parsed.contaminacion > LIMITS.contaminacionMax ? 2 : 0) +
+    (inputs.aspecto === "turbio" ? 1 : 0);
+  const sapNivel = sapScore >= 3 ? "Alto" : sapScore >= 1 ? "Medio" : "Bajo";
+
+  // Eficiencia de reacción (combinada)
+  const eficiencia = optValid
+    ? Math.round(rendimiento * 0.6 + conversion * 0.4 - (sapScore * 3))
+    : 0;
+
+  const chartData = allValid
     ? [
-        { name: "Ef. Diel.", Valor: Math.round(dielectric.eficienciaDielectrica), Óptimo: 80 },
-        { name: "Est. Térm.", Valor: Math.round(dielectric.estabilidadTermica), Óptimo: 80 },
-        { name: "Cap. Aisl.", Valor: Math.round(dielectric.capacidadAislante), Óptimo: 80 },
-        { name: "Riesgo Op.", Valor: Math.round(dielectric.riesgoOperativo), Óptimo: 20 },
-        { name: "Est. Fluido", Valor: Math.round(dielectric.estabilidadFluido), Óptimo: 80 },
+        { name: "Acidez", Permitido: LIMITS.acidez, Real: parsed.acidez },
+        { name: "Humedad", Permitido: LIMITS.humedad, Real: parsed.humedad },
+        { name: "Viscosidad", Permitido: LIMITS.viscosidadMax, Real: parsed.viscosidad },
+        { name: "Rigidez (kV)", Permitido: LIMITS.rigidezMin, Real: parsed.rigidez },
+        { name: "Conductiv.", Permitido: LIMITS.conductividadMax, Real: parsed.conductividad },
+        { name: "Temp. (°C)", Permitido: LIMITS.tempOpMax, Real: parsed.tempOperativa },
       ]
     : [];
-
-  // Recomendaciones automáticas dinámicas
-  const recomendaciones: { level: "optimo" | "precaucion" | "critico"; msg: string }[] = [];
-  if (dielectric) {
-    if (viable && precauciones === 0) {
-      recomendaciones.push({ level: "optimo", msg: "Fluido apto para aplicaciones dieléctricas" });
-    }
-    if (dielectric.eficienciaDielectrica >= 85 && dielectric.capacidadAislante >= 85) {
-      recomendaciones.push({ level: "optimo", msg: "Desempeño dieléctrico óptimo" });
-    }
-    if (dielectric.capacidadAislante < 60 || criticoHumedad) {
-      recomendaciones.push({ level: "critico", msg: "Capacidad aislante comprometida" });
-    }
-    if (criticoConductividad || dielectric.riesgoOperativo >= 60) {
-      recomendaciones.push({ level: "critico", msg: "Riesgo operativo eléctrico" });
-    }
-    if (alertaVisual || contaminacionAlta) {
-      recomendaciones.push({ level: "precaucion", msg: "Filtración recomendada" });
-    }
-    if (oxidacionBaja) {
-      recomendaciones.push({ level: "precaucion", msg: "Posible degradación oxidativa" });
-    }
-  }
 
   const handleChange =
     (key: keyof Inputs) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -904,20 +892,17 @@ function Dashboard() {
                   </ReportGroup>
                 </div>
 
-                {/* Indicadores dieléctricos (gráfica) */}
+                {/* Chart */}
                 <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" /> Indicadores Dieléctricos · Tiempo Real
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                    Comparativo: Permitido vs. Real
                   </h3>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Eficiencia dieléctrica · Estabilidad térmica · Capacidad aislante · Riesgo operativo · Estabilidad del fluido
-                  </p>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={12} domain={[0, 100]} />
+                        <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
+                        <YAxis stroke="var(--muted-foreground)" fontSize={12} />
                         <Tooltip contentStyle={{
                           backgroundColor: "var(--card)",
                           border: "1px solid var(--border)",
@@ -925,47 +910,12 @@ function Dashboard() {
                           fontSize: 12,
                         }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="Valor" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Óptimo" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Permitido" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Real" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
-                  {dielectric && (
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4">
-                      <DielMini label="Ef. Dieléctrica" value={dielectric.eficienciaDielectrica} />
-                      <DielMini label="Est. Térmica" value={dielectric.estabilidadTermica} />
-                      <DielMini label="Cap. Aislante" value={dielectric.capacidadAislante} />
-                      <DielMini label="Riesgo Operativo" value={dielectric.riesgoOperativo} invert />
-                      <DielMini label="Est. Fluido" value={dielectric.estabilidadFluido} />
-                    </div>
-                  )}
                 </div>
-
-                {/* Recomendaciones automáticas dinámicas */}
-                {recomendaciones.length > 0 && (
-                  <div className="rounded-xl border border-border bg-card p-5">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                      <Zap className="h-4 w-4" /> Recomendaciones automáticas
-                    </h3>
-                    <ul className="space-y-2">
-                      {recomendaciones.map((r, i) => (
-                        <li
-                          key={i}
-                          className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm ${
-                            r.level === "critico"
-                              ? "border-destructive/40 bg-destructive/5"
-                              : r.level === "precaucion"
-                                ? "border-amber-500/40 bg-amber-500/5"
-                                : "border-emerald-500/40 bg-emerald-500/5"
-                          }`}
-                        >
-                          <span className="text-foreground">{r.msg}</span>
-                          <StatusBadge level={r.level} />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
 
                 {/* Indicadores Dieléctricos */}
                 <div className="rounded-xl border border-border bg-card p-5">
@@ -1087,6 +1037,18 @@ function ReportRow({
   );
 }
 
+function OptRow({ label, target, actual }: { label: string; target: string; actual: string }) {
+  return (
+    <div className="rounded border border-border bg-card px-2 py-1.5">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="flex items-baseline justify-between gap-2 mt-0.5">
+        <span className="font-mono text-[11px] text-primary">{target}</span>
+        <span className="font-mono text-[11px] text-foreground">{actual}</span>
+      </div>
+    </div>
+  );
+}
+
 function ProgressBar({ label, value, tone }: { label: string; value: number; tone: "ok" | "warn" | "danger" }) {
   const v = Math.max(0, Math.min(100, value));
   const color =
@@ -1144,24 +1106,6 @@ function AlertCard({
 
 function clamp(v: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, v));
-}
-
-function DielMini({ label, value, invert }: { label: string; value: number; invert?: boolean }) {
-  const v = Math.max(0, Math.min(100, value));
-  const score = invert ? 100 - v : v;
-  const tone =
-    score >= 80 ? "text-emerald-500" : score >= 55 ? "text-amber-500" : "text-destructive";
-  const bar =
-    score >= 80 ? "bg-emerald-500" : score >= 55 ? "bg-amber-500" : "bg-destructive";
-  return (
-    <div className="rounded-md border border-border bg-background px-2.5 py-2">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{label}</p>
-      <p className={`mt-0.5 font-mono text-base font-semibold ${tone}`}>{v.toFixed(0)}%</p>
-      <div className="h-1 w-full rounded-full bg-muted overflow-hidden mt-1">
-        <div className={`h-full ${bar} transition-all`} style={{ width: `${score}%` }} />
-      </div>
-    </div>
-  );
 }
 
 function DielectricOptimization({
