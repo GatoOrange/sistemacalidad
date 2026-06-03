@@ -883,35 +883,85 @@ function Dashboard() {
                   </ReportGroup>
                 </div>
 
-                {/* Chart */}
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Comparativo: Permitido vs. Real
-                  </h3>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                        <Tooltip contentStyle={{
-                          backgroundColor: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 8,
-                          fontSize: 12,
-                        }} />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="Permitido" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Real" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                {/* Gráfica de desempeño dieléctrico */}
+                {dielectric && (
+                  <div className="rounded-xl border border-border bg-card p-5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-2">
+                      <Zap className="h-4 w-4" /> Desempeño Dieléctrico (tiempo real)
+                    </h3>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Indicadores calculados a partir de los parámetros físicos, químicos y de control.
+                    </p>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={[
+                            { name: "Ef. dieléctrica", Valor: Math.round(dielectric.eficienciaDielectrica), Óptimo: 80 },
+                            { name: "Est. térmica", Valor: Math.round(dielectric.estabilidadTermica), Óptimo: 80 },
+                            { name: "Cap. aislante", Valor: Math.round(dielectric.capacidadAislante), Óptimo: 80 },
+                            { name: "Riesgo oper.", Valor: Math.round(dielectric.riesgoOperativo), Óptimo: 20 },
+                            { name: "Est. fluido", Valor: Math.round(dielectric.estabilidadFluido), Óptimo: 80 },
+                          ]}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                          <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} />
+                          <YAxis stroke="var(--muted-foreground)" fontSize={12} domain={[0, 100]} />
+                          <Tooltip contentStyle={{
+                            backgroundColor: "var(--card)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 8,
+                            fontSize: 12,
+                          }} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Bar dataKey="Valor" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="Óptimo" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Indicadores Dieléctricos */}
+                {/* Indicadores Dieléctricos en vivo */}
+                {dielectric && (
+                  <div className="rounded-xl border border-border bg-card p-5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                      <Gauge className="h-4 w-4" /> Indicadores Dieléctricos
+                    </h3>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <DielectricIndicator label="Eficiencia dieléctrica" value={dielectric.eficienciaDielectrica} invert={false} icon={<Zap className="h-3.5 w-3.5" />} />
+                      <DielectricIndicator label="Estabilidad térmica" value={dielectric.estabilidadTermica} invert={false} icon={<Thermometer className="h-3.5 w-3.5" />} />
+                      <DielectricIndicator label="Capacidad aislante" value={dielectric.capacidadAislante} invert={false} icon={<Activity className="h-3.5 w-3.5" />} />
+                      <DielectricIndicator label="Riesgo operativo" value={dielectric.riesgoOperativo} invert={true} icon={<AlertTriangle className="h-3.5 w-3.5" />} />
+                      <DielectricIndicator label="Estabilidad del fluido" value={dielectric.estabilidadFluido} invert={false} icon={<Droplets className="h-3.5 w-3.5" />} />
+                      <DielectricIndicator label="Desempeño esperado" value={dielectric.desempeno} invert={false} icon={<TrendingUp className="h-3.5 w-3.5" />} />
+                    </div>
+                    <div className="mt-4 grid sm:grid-cols-2 gap-2 text-xs">
+                      {dielectric.desempeno >= 80 && dielectric.riesgoOperativo < 20 && (
+                        <RecMsg tone="ok" text="Desempeño dieléctrico óptimo" />
+                      )}
+                      {viable && dielectric.capacidadAislante >= 70 && (
+                        <RecMsg tone="ok" text="Fluido apto para aplicaciones dieléctricas" />
+                      )}
+                      {dielectric.capacidadAislante < 60 && (
+                        <RecMsg tone="danger" text="Capacidad aislante comprometida" />
+                      )}
+                      {(alertaVisual || dielectric.estabilidadFluido < 60) && (
+                        <RecMsg tone="warn" text="Filtración recomendada" />
+                      )}
+                      {dielectric.riesgoOperativo >= 40 && (
+                        <RecMsg tone="danger" text="Riesgo operativo eléctrico" />
+                      )}
+                      {oxidacionBaja && (
+                        <RecMsg tone="warn" text="Posible degradación oxidativa" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Referencias normativas */}
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Indicadores Dieléctricos de Referencia
+                    Referencias normativas
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-4">
                     <MetricBox label="Rigidez dieléctrica mínima" value={`${LIMITS.rigidezMin} kV`}
