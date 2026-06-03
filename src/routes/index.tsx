@@ -268,7 +268,44 @@ function Dashboard() {
     const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
     const idxTemp = c(100 - (Math.abs(parsed.tempOperativa - tMid) / tSpan) * 100);
     const idxOxid = c((parsed.oxidacion / LIMITS.oxidacionMin) * 90);
-    const estabilidadTermica = c(idxTemp * 0.55 + idxOxid *
+    const estabilidadTermica = c(idxTemp * 0.55 + idxOxid * 0.45);
+    const idxHumedad = c(100 - (parsed.humedad / LIMITS.humedad) * 100);
+    const viscOk =
+      parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax
+        ? 100
+        : 60;
+    const capacidadAislante = c(idxRigidez * 0.5 + idxHumedad * 0.35 + viscOk * 0.15);
+    // Riesgo operativo (mayor = peor)
+    const riesgoOperativo = c(
+      (parsed.humedad / LIMITS.humedad) * 30 +
+        (parsed.conductividad / LIMITS.conductividadMax) * 30 +
+        Math.max(0, (LIMITS.rigidezMin - parsed.rigidez) / LIMITS.rigidezMin) * 25 +
+        (parsed.contaminacion / LIMITS.contaminacionMax) * 15,
+    );
+    // Estabilidad del fluido (oxidación + pureza + ausencia de turbiedad)
+    const idxPureza = c((parsed.pureza / LIMITS.purezaMin) * 90);
+    const estabilidadFluido = c(
+      idxOxid * 0.45 +
+        idxPureza * 0.35 +
+        (inputs.aspecto === "limpio" ? 100 : 50) * 0.1 +
+        (inputs.color === "marron" ? 40 : 100) * 0.1,
+    );
+    const desempeno = c(
+      eficienciaDielectrica * 0.3 +
+        estabilidadTermica * 0.25 +
+        capacidadAislante * 0.25 +
+        estabilidadFluido * 0.1 +
+        (100 - riesgoOperativo) * 0.1,
+    );
+    return {
+      eficienciaDielectrica,
+      estabilidadTermica,
+      capacidadAislante,
+      riesgoOperativo,
+      estabilidadFluido,
+      desempeno,
+    };
+  }, [allValid, parsed, inputs.aspecto, inputs.color]);
 
   const handleChange =
     (key: keyof Inputs) => (e: React.ChangeEvent<HTMLInputElement>) => {
