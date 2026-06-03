@@ -1158,6 +1158,24 @@ function clamp(v: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, v));
 }
 
+function DielMini({ label, value, invert }: { label: string; value: number; invert?: boolean }) {
+  const v = Math.max(0, Math.min(100, value));
+  const score = invert ? 100 - v : v;
+  const tone =
+    score >= 80 ? "text-emerald-500" : score >= 55 ? "text-amber-500" : "text-destructive";
+  const bar =
+    score >= 80 ? "bg-emerald-500" : score >= 55 ? "bg-amber-500" : "bg-destructive";
+  return (
+    <div className="rounded-md border border-border bg-background px-2.5 py-2">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{label}</p>
+      <p className={`mt-0.5 font-mono text-base font-semibold ${tone}`}>{v.toFixed(0)}%</p>
+      <div className="h-1 w-full rounded-full bg-muted overflow-hidden mt-1">
+        <div className={`h-full ${bar} transition-all`} style={{ width: `${score}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function DielectricOptimization({
   parsed,
   numericsValid,
