@@ -904,17 +904,20 @@ function Dashboard() {
                   </ReportGroup>
                 </div>
 
-                {/* Chart */}
+                {/* Indicadores dieléctricos (gráfica) */}
                 <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Comparativo: Permitido vs. Real
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" /> Indicadores Dieléctricos · Tiempo Real
                   </h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Eficiencia dieléctrica · Estabilidad térmica · Capacidad aislante · Riesgo operativo · Estabilidad del fluido
+                  </p>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={12} />
+                        <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} />
+                        <YAxis stroke="var(--muted-foreground)" fontSize={12} domain={[0, 100]} />
                         <Tooltip contentStyle={{
                           backgroundColor: "var(--card)",
                           border: "1px solid var(--border)",
@@ -922,12 +925,47 @@ function Dashboard() {
                           fontSize: 12,
                         }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="Permitido" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Real" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Valor" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Óptimo" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  {dielectric && (
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4">
+                      <DielMini label="Ef. Dieléctrica" value={dielectric.eficienciaDielectrica} />
+                      <DielMini label="Est. Térmica" value={dielectric.estabilidadTermica} />
+                      <DielMini label="Cap. Aislante" value={dielectric.capacidadAislante} />
+                      <DielMini label="Riesgo Operativo" value={dielectric.riesgoOperativo} invert />
+                      <DielMini label="Est. Fluido" value={dielectric.estabilidadFluido} />
+                    </div>
+                  )}
                 </div>
+
+                {/* Recomendaciones automáticas dinámicas */}
+                {recomendaciones.length > 0 && (
+                  <div className="rounded-xl border border-border bg-card p-5">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                      <Zap className="h-4 w-4" /> Recomendaciones automáticas
+                    </h3>
+                    <ul className="space-y-2">
+                      {recomendaciones.map((r, i) => (
+                        <li
+                          key={i}
+                          className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm ${
+                            r.level === "critico"
+                              ? "border-destructive/40 bg-destructive/5"
+                              : r.level === "precaucion"
+                                ? "border-amber-500/40 bg-amber-500/5"
+                                : "border-emerald-500/40 bg-emerald-500/5"
+                          }`}
+                        >
+                          <span className="text-foreground">{r.msg}</span>
+                          <StatusBadge level={r.level} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Indicadores Dieléctricos */}
                 <div className="rounded-xl border border-border bg-card p-5">
