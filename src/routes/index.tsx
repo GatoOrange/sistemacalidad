@@ -887,14 +887,14 @@ function Dashboard() {
                 {/* Chart */}
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Comparativo: Permitido vs. Real
+                    Indicadores Dieléctricos · Valor vs. Óptimo
                   </h3>
                   <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={12} />
+                        <YAxis stroke="var(--muted-foreground)" fontSize={12} domain={[0, 100]} />
                         <Tooltip contentStyle={{
                           backgroundColor: "var(--card)",
                           border: "1px solid var(--border)",
@@ -902,8 +902,8 @@ function Dashboard() {
                           fontSize: 12,
                         }} />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="Permitido" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Real" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Valor" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Óptimo" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -912,13 +912,29 @@ function Dashboard() {
                 {/* Indicadores Dieléctricos */}
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Indicadores Dieléctricos de Referencia
+                    Indicadores Dieléctricos en Tiempo Real
                   </h3>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <MetricBox label="Rigidez dieléctrica mínima" value={`${LIMITS.rigidezMin} kV`}
-                      sub="ASTM D877 · 2.5 mm" />
-                    <MetricBox label="Conductividad máxima" value={`${LIMITS.conductividadMax} pS/m`}
-                      sub="IEC 60247 · aislante" />
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {dielectricMetrics.map((m) => {
+                      const score = m.invert ? 100 - m.Valor : m.Valor;
+                      const lvl: "optimo" | "precaucion" | "critico" =
+                        score >= 80 ? "optimo" : score >= 55 ? "precaucion" : "critico";
+                      const tone = lvl === "optimo" ? "ok" : lvl === "precaucion" ? "warn" : "danger";
+                      return (
+                        <div key={m.name} className="rounded-lg border border-border bg-background p-3">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {m.name}
+                            </p>
+                            <StatusBadge level={lvl} />
+                          </div>
+                          <p className="font-mono text-2xl font-bold">{m.Valor}<span className="text-xs text-muted-foreground ml-1">%</span></p>
+                          <div className="mt-2">
+                            <ProgressBar label="" value={score} tone={tone} />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
