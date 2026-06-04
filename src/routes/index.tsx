@@ -268,7 +268,45 @@ function Dashboard() {
   const tMid = (LIMITS.tempOpMin + LIMITS.tempOpMax) / 2;
   const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
   const idxTemp = allValid ? clampN(100 - (Math.abs(parsed.tempOperativa - tMid) / tSpan) * 100) : 0;
-  const idxOxid = allValid ? clampN((parsed.oxidacion / LIMITS.oxidac
+  const idxOxid = allValid ? clampN((parsed.oxidacion / LIMITS.oxidacionMin) * 90) : 0;
+  const estabilidadTermica = allValid ? clampN(idxTemp * 0.55 + idxOxid * 0.45) : 0;
+
+  const idxHumedad = allValid ? clampN(100 - (parsed.humedad / LIMITS.humedad) * 100) : 0;
+  const viscOk = allValid
+    ? parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax
+      ? 100
+      : 60
+    : 0;
+  const capacidadAislante = allValid
+    ? clampN(idxRigidez * 0.5 + idxHumedad * 0.35 + viscOk * 0.15)
+    : 0;
+
+  // Riesgo operativo (0 = bajo, 100 = alto)
+  const riesgoOperativo = allValid
+    ? clampN(
+        (parsed.humedad / LIMITS.humedad) * 30 +
+          (parsed.conductividad / LIMITS.conductividadMax) * 30 +
+          Math.max(0, (LIMITS.rigidezMin - parsed.rigidez) / LIMITS.rigidezMin) * 25 +
+          (parsed.contaminacion / LIMITS.contaminacionMax) * 15,
+      )
+    : 0;
+
+  // Estabilidad del fluido (oxidación, contaminación, aspecto/color, viscosidad)
+  const idxContam = allValid ? clampN(100 - (parsed.contaminacion / LIMITS.contaminacionMax) * 100) : 0;
+  const idxVisual = (inputs.aspecto === "limpio" ? 100 : 50) - (inputs.color === "marron" ? 25 : 0);
+  const estabilidadFluido = allValid
+    ? clampN(idxOxid * 0.4 + idxContam * 0.3 + viscOk * 0.15 + clampN(idxVisual) * 0.15)
+    : 0;
+
+  const dielectricMetrics = [
+    { name: "Ef. dieléctrica", Valor: Math.round(eficienciaDielectrica), Óptimo: 80, invert: false },
+    { name: "Estab. térmica", Valor: Math.round(estabilidadTermica), Óptimo: 80, invert: false },
+    { name: "Cap. aislante", Valor: Math.round(capacidadAislante), Óptimo: 80, invert: false },
+    { name: "Riesgo oper.", Valor: Math.round(riesgoOperativo), Óptimo: 20, invert: true },
+    { name: "Estab. fluido", Valor: Math.round(estabilidadFluido), Óptimo: 80, invert: false },
+  ];
+
+  const chartData = allValid ? dielectricMetrics : [];
 
   const handleChange =
     (key: keyof Inputs) => (e: React.ChangeEvent<HTMLInputElement>) => {
