@@ -257,58 +257,18 @@ function Dashboard() {
         ? "precaucion"
         : "optimo";
 
-  // ===== Cálculos de optimización (tiempo real) =====
-  const MW = { etanol: 46, metanol: 32, aceite: 880 };
-  const optKg = parseFloat(optCantidad);
-  const optR = parseFloat(optRatio);
-  const optC = parseFloat(optCat);
-  const optValid = !isNaN(optKg) && optKg > 0 && !isNaN(optR) && !isNaN(optC);
-
-  const molesAceite = optValid ? (optKg * 1000) / MW.aceite : 0;
-  const molesAlcohol = molesAceite * (optR || 0);
-  const masaAlcoholKg = (molesAlcohol * MW[optAlcohol]) / 1000;
-  const masaCatKg = optValid ? optKg * ((optC || 0) / 100) : 0;
-
-  // Rendimiento: base 97% (metanol) / 95% (etanol), penalizaciones por calidad MP
-  let rendimiento = optAlcohol === "metanol" ? 97 : 95;
-  const penal: string[] = [];
-  if (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad) { rendimiento -= 10; penal.push("Humedad alta −10%"); }
-  if (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez) { rendimiento -= 15; penal.push("Acidez crítica −15%"); }
-  if (!isNaN(parsed.tempOperativa) && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax)) {
-    rendimiento -= 8; penal.push("T fuera de rango −8%");
-  }
-  if (inputs.color === "marron") { rendimiento -= 5; penal.push("Color oscuro −5%"); }
-  if (inputs.aspecto === "turbio") { rendimiento -= 3; penal.push("Aspecto turbio −3%"); }
-  if (optValid && optR < 5) { rendimiento -= 5; penal.push("Relación molar baja −5%"); }
-  if (optValid && optR > 9) { rendimiento -= 2; penal.push("Exceso de alcohol −2%"); }
-  rendimiento = Math.max(0, Math.min(100, rendimiento));
-
-  const masaBiodisolvente = optValid ? optKg * (rendimiento / 100) : 0;
-  const conversion = Math.max(0, Math.min(99, rendimiento - 2));
-
-  // Riesgo de saponificación
-  const sapScore =
-    (!isNaN(parsed.humedad) && parsed.humedad > LIMITS.humedad ? 2 : 0) +
-    (!isNaN(parsed.acidez) && parsed.acidez > LIMITS.acidez ? 2 : 0) +
-    (!isNaN(parsed.contaminacion) && parsed.contaminacion > LIMITS.contaminacionMax ? 2 : 0) +
-    (inputs.aspecto === "turbio" ? 1 : 0);
-  const sapNivel = sapScore >= 3 ? "Alto" : sapScore >= 1 ? "Medio" : "Bajo";
-
-  // Eficiencia de reacción (combinada)
-  const eficiencia = optValid
-    ? Math.round(rendimiento * 0.6 + conversion * 0.4 - (sapScore * 3))
+  // ===== Indicadores dieléctricos (tiempo real, escala 0–100) =====
+  const clampN = (v: number, mn = 0, mx = 100) => Math.max(mn, Math.min(mx, v));
+  const idxRigidez = allValid ? clampN((parsed.rigidez / LIMITS.rigidezMin) * 80) : 0;
+  const idxConduct = allValid
+    ? clampN(100 - (parsed.conductividad / LIMITS.conductividadMax) * 80)
     : 0;
+  const eficienciaDielectrica = allValid ? clampN(idxRigidez * 0.6 + idxConduct * 0.4) : 0;
 
-  const chartData = allValid
-    ? [
-        { name: "Acidez", Permitido: LIMITS.acidez, Real: parsed.acidez },
-        { name: "Humedad", Permitido: LIMITS.humedad, Real: parsed.humedad },
-        { name: "Viscosidad", Permitido: LIMITS.viscosidadMax, Real: parsed.viscosidad },
-        { name: "Rigidez (kV)", Permitido: LIMITS.rigidezMin, Real: parsed.rigidez },
-        { name: "Conductiv.", Permitido: LIMITS.conductividadMax, Real: parsed.conductividad },
-        { name: "Temp. (°C)", Permitido: LIMITS.tempOpMax, Real: parsed.tempOperativa },
-      ]
-    : [];
+  const tMid = (LIMITS.tempOpMin + LIMITS.tempOpMax) / 2;
+  const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
+  const idxTemp = allValid ? clampN(100 - (Math.abs(parsed.tempOperativa - tMid) / tSpan) * 100) : 0;
+  const idxOxid = allValid ? clampN((parsed.oxidacion / LIMITS.oxidac
 
   const handleChange =
     (key: keyof Inputs) => (e: React.ChangeEvent<HTMLInputElement>) => {
