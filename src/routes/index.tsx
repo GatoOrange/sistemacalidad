@@ -2,26 +2,20 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import {
   Beaker,
-  Droplets,
   FlaskConical,
-  Gauge,
+  Droplets,
+  Atom,
+  Factory,
   Moon,
   Sun,
   Download,
-  AlertTriangle,
-  CheckCircle2,
-  FileText,
-  Factory,
-  Activity,
   LogOut,
-  Thermometer,
-  Atom,
+  FileText,
   Settings2,
   TrendingUp,
-  Zap,
-  CloudSun,
-  MapPin,
-  RefreshCw,
+  Target,
+  ClipboardList,
+  ScrollText,
 } from "lucide-react";
 import {
   BarChart,
@@ -32,6 +26,11 @@ import {
   ResponsiveContainer,
   CartesianGrid,
   Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
 } from "recharts";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import jsPDF from "jspdf";
@@ -39,149 +38,585 @@ import jsPDF from "jspdf";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard QC — Biodisolvente Dieléctrico" },
+      { title: "Plataforma Oleoquímica — FAME/FAEE desde Aceite Residual" },
       {
         name: "description",
         content:
-          "Sistema de Control de Calidad y Optimización para Biodisolvente Dieléctrico. Desempeño dieléctrico, estabilidad operativa y seguridad industrial.",
+          "Reestructuración del proceso de producción de ésteres monoalquílicos de ácidos grasos (FAME/FAEE) a partir de aceite residual de cocina: caracterización, análisis comparativo vs biodiésel convencional y evaluación de nichos de mercado.",
       },
     ],
   }),
-  component: Dashboard,
+  component: PlataformaOleoquimica,
 });
 
-type Inputs = {
-  // Física
-  densidad: string;
-  viscosidad: string;
-  humedad: string;
-  color: string;   // id del color de materia prima
-  aspecto: string; // 'limpio' | 'turbio'
-  // Química
-  acidez: string;
-  rigidez: string;        // kV / 2.5 mm
-  conductividad: string;  // pS/m
-  inflamacion: string;    // °C
-  oxidacion: string;      // h (estabilidad oxidativa)
-  // Control
-  tempOperativa: string;  // °C
-  compatibilidad: string; // % compatibilidad dieléctrica
-  pureza: string;         // %
-  contaminacion: string;  // ppm
+// ====================================================================
+// FASE 1 — Variables del proceso (toda la información como variables)
+// ====================================================================
+
+type Proyecto = {
+  // Materia prima
+  tipoAceite: string;
+  origenAceite: string;
+  acidez: string;            // mg KOH/g
+  densidadAceite: string;    // g/mL
+  humedadAceite: string;     // %
+  saponificacion: string;    // mg KOH/g
+  yodo: string;              // g I2/100 g
+  perfilAG: string;          // texto: %C16:0, %C18:1, etc.
+
+  // Alcohol
+  alcoholNombre: string;
+  alcoholFormula: string;
+  alcoholPureza: string;     // %
+  relacionMolar: string;     // aceite:alcohol -> ej "1:6"
+  funcionAlcohol: string;
+
+  // Catalizador básico
+  catBasicoNombre: string;
+  catBasicoConcentracion: string; // %
+  catBasicoCantidad: string;      // g o % p/p del aceite
+  catBasicoJustificacion: string;
+
+  // Catalizador ácido (esterificación previa)
+  catAcidoNombre: string;
+  catAcidoConcentracion: string;
+  catAcidoCantidad: string;
+  catAcidoJustificacion: string;
+
+  // Metodología
+  metCaracterizacion: string;
+  metEsterificacion: string;
+  metTransesterificacion: string;
+  metLavado: string;
+  metSecado: string;
+  metPurificacion: string;
+  metProductoFinal: string;
+
+  // Condiciones operacionales
+  temperatura: string;     // °C
+  tiempoReaccion: string;  // min
+  agitacion: string;       // rpm
+  presion: string;         // atm o kPa
+  rendimiento: string;     // %
+  conversion: string;      // %
 };
 
-const LIMITS = {
-  acidez: 0.06,        // mg KOH/g — ASTM D6871
-  humedad: 0.05,       // % — crítico
-  densidadMin: 860,    // kg/m³
-  densidadMax: 900,
-  viscosidadMin: 3.5,  // cSt
-  viscosidadMax: 12,   // cSt
-  rigidezMin: 30,      // kV / 2.5 mm (ASTM D877)
-  conductividadMax: 50,// pS/m (IEC 60247)
-  inflamacionMin: 130, // °C (ASTM D92)
-  oxidacionMin: 48,    // h
-  tempOpMin: 40,       // °C
-  tempOpMax: 90,       // °C
-  compatibilidadMin: 95, // %
-  purezaMin: 99,       // %
-  contaminacionMax: 100, // ppm
-};
-
-const initialInputs: Inputs = {
-  densidad: "",
-  viscosidad: "",
-  humedad: "",
-  color: "",
-  aspecto: "",
+const initial: Proyecto = {
+  tipoAceite: "",
+  origenAceite: "",
   acidez: "",
-  rigidez: "",
-  conductividad: "",
-  inflamacion: "",
-  oxidacion: "",
-  tempOperativa: "",
-  compatibilidad: "",
-  pureza: "",
-  contaminacion: "",
+  densidadAceite: "",
+  humedadAceite: "",
+  saponificacion: "",
+  yodo: "",
+  perfilAG: "",
+  alcoholNombre: "",
+  alcoholFormula: "",
+  alcoholPureza: "",
+  relacionMolar: "",
+  funcionAlcohol: "",
+  catBasicoNombre: "",
+  catBasicoConcentracion: "",
+  catBasicoCantidad: "",
+  catBasicoJustificacion: "",
+  catAcidoNombre: "",
+  catAcidoConcentracion: "",
+  catAcidoCantidad: "",
+  catAcidoJustificacion: "",
+  metCaracterizacion: "",
+  metEsterificacion: "",
+  metTransesterificacion: "",
+  metLavado: "",
+  metSecado: "",
+  metPurificacion: "",
+  metProductoFinal: "",
+  temperatura: "",
+  tiempoReaccion: "",
+  agitacion: "",
+  presion: "",
+  rendimiento: "",
+  conversion: "",
 };
 
-type ColorOpt = { id: string; label: string; hex: string; warn?: boolean };
-const COLOR_OPTIONS: ColorOpt[] = [
-  { id: "amarillo", label: "Amarillo Claro (Refinado dieléctrico)", hex: "#F4E27A" },
-  { id: "ambar", label: "Ámbar/Dorado (Estable, baja oxidación)", hex: "#C98A2B" },
-  { id: "marron", label: "Marrón Oscuro (Oxidado/Contaminado)", hex: "#3E2410", warn: true },
-  { id: "rojizo", label: "Rojizo (Compuestos polares/Sobrecalentado)", hex: "#8A2A1E" },
-];
+// ====================================================================
+// FASE 2 — Inferencia química del éster obtenido
+// ====================================================================
 
-function Dashboard() {
+type EsterInfo = {
+  tipo: string;
+  abreviatura: string;
+  familia: string;
+  estructura: string;
+  mecanismo: string;
+  influenciaAlcohol: string;
+  influenciaCatalizador: string;
+  ventajas: string[];
+  limitaciones: string[];
+};
+
+function normalizeAlcohol(name: string): { key: string; carbono: number } {
+  const n = name.trim().toLowerCase();
+  if (!n) return { key: "", carbono: 0 };
+  if (n.includes("metanol") || n === "ch3oh") return { key: "metanol", carbono: 1 };
+  if (n.includes("etanol") || n === "c2h5oh") return { key: "etanol", carbono: 2 };
+  if (n.includes("isoprop")) return { key: "isopropanol", carbono: 3 };
+  if (n.includes("propan")) return { key: "propanol", carbono: 3 };
+  if (n.includes("butan")) return { key: "butanol", carbono: 4 };
+  return { key: n, carbono: 0 };
+}
+
+function inferirEster(p: Proyecto): EsterInfo {
+  const { key } = normalizeAlcohol(p.alcoholNombre);
+  const tieneCatBasico = p.catBasicoNombre.trim().length > 0;
+  const tieneCatAcido = p.catAcidoNombre.trim().length > 0;
+
+  const map: Record<string, { tipo: string; abrev: string }> = {
+    metanol: { tipo: "Ésteres metílicos de ácidos grasos", abrev: "FAME" },
+    etanol: { tipo: "Ésteres etílicos de ácidos grasos", abrev: "FAEE" },
+    isopropanol: { tipo: "Ésteres isopropílicos de ácidos grasos", abrev: "FAIPE" },
+    propanol: { tipo: "Ésteres propílicos de ácidos grasos", abrev: "FAPE" },
+    butanol: { tipo: "Ésteres butílicos de ácidos grasos", abrev: "FABE" },
+  };
+  const base = map[key] ?? {
+    tipo: "Éster monoalquílico de ácidos grasos",
+    abrev: "FAAE",
+  };
+
+  const mecPartes: string[] = [];
+  if (tieneCatAcido)
+    mecPartes.push(
+      "Esterificación ácida previa (Fischer): protonación del grupo carboxilo, ataque nucleofílico del alcohol y eliminación de agua. Reduce el índice de acidez por debajo de 1 mg KOH/g antes de la transesterificación.",
+    );
+  if (tieneCatBasico)
+    mecPartes.push(
+      "Transesterificación básica: el alcóxido formado in situ ataca el carbono carbonílico del triglicérido, desplaza el glicerol mediante un intermediario tetraédrico y libera el éster alquílico correspondiente.",
+    );
+
+  return {
+    tipo: base.tipo,
+    abreviatura: base.abrev,
+    familia: "Ésteres monoalquílicos de ácidos grasos de cadena larga (C14–C22)",
+    estructura: `R–COO–R'  donde R proviene del perfil de ácidos grasos del aceite (${p.tipoAceite || "aceite residual"}) y R' corresponde al grupo alquilo aportado por ${p.alcoholNombre || "el alcohol empleado"}.`,
+    mecanismo:
+      mecPartes.join(" ") ||
+      "Reacción de transesterificación clásica catalizada homogéneamente: ataque nucleofílico del alcóxido sobre el carbono carbonílico, formación de intermediario tetraédrico y liberación secuencial de tres moléculas de éster por molécula de triglicérido.",
+    influenciaAlcohol: alcoholInfluence(key),
+    influenciaCatalizador: catalizadorInfluence(tieneCatAcido, tieneCatBasico),
+    ventajas: ventajasEster(key),
+    limitaciones: limitacionesEster(key),
+  };
+}
+
+function alcoholInfluence(key: string): string {
+  switch (key) {
+    case "metanol":
+      return "Cadena más corta y mayor polaridad: alta reactividad, separación de fases rápida, viscosidad cinemática típica 3.5–5.0 cSt y excelente rendimiento; sin embargo, deriva de fuentes fósiles y es tóxico.";
+    case "etanol":
+      return "Cadena C2 ligeramente más larga: producto más biodegradable y de origen renovable (bioetanol), mejor poder solvente y punto de inflamación más alto, pero separación de fases más lenta por la mayor solubilidad del glicerol.";
+    case "isopropanol":
+      return "Alcohol secundario ramificado: ésteres con menor punto de fluidez, mejor desempeño en frío, mayor poder solvente y compatibilidad con formulaciones cosméticas/limpieza.";
+    case "butanol":
+      return "Cadena C4: ésteres más hidrofóbicos, mayor lubricidad y mayor punto de inflamación; útiles como solventes verdes y lubricantes biodegradables.";
+    default:
+      return "El alcohol determina la longitud y geometría del grupo R' del éster, afectando viscosidad, polaridad, volatilidad, solvencia y desempeño en frío del producto.";
+  }
+}
+
+function catalizadorInfluence(acido: boolean, basico: boolean): string {
+  if (acido && basico)
+    return "Ruta combinada ácido-base: el catalizador ácido (típicamente H2SO4) reduce ácidos grasos libres por esterificación; posteriormente el catalizador básico (NaOH/KOH/CH3ONa) acelera la transesterificación hasta conversiones >95%. Recomendado para aceites residuales con alta acidez.";
+  if (basico)
+    return "Catálisis básica homogénea: alta velocidad y conversión, pero sensible a humedad y ácidos grasos libres; requiere materia prima con acidez <1 mg KOH/g para evitar saponificación.";
+  if (acido)
+    return "Catálisis ácida homogénea: tolera alta acidez y humedad pero es lenta (5–20× más que la básica) y exige mayor relación molar alcohol:aceite y temperaturas más altas.";
+  return "La selección catalítica condiciona la cinética, la formación de jabones y el rendimiento final del éster monoalquílico.";
+}
+
+function ventajasEster(key: string): string[] {
+  const base = [
+    "Origen renovable a partir de residuos: economía circular.",
+    "Biodegradabilidad >90% en 28 días (OECD 301).",
+    "Baja toxicidad acuática y dérmica respecto a solventes petroquímicos.",
+    "Excelente lubricidad intrínseca (mejora del HFRR).",
+  ];
+  if (key === "etanol") base.push("Producto 100% renovable cuando el bioetanol también lo es.");
+  if (key === "isopropanol" || key === "butanol")
+    base.push("Mayor poder solvente y mejor comportamiento en frío que el FAME convencional.");
+  return base;
+}
+
+function limitacionesEster(key: string): string[] {
+  const base = [
+    "Estabilidad oxidativa limitada por insaturaciones del aceite original.",
+    "Higroscopicidad moderada: requiere almacenamiento bajo atmósfera seca.",
+    "Punto de nube/fluidez dependiente del perfil de ácidos grasos saturados.",
+  ];
+  if (key === "metanol") base.push("Producto trazable a metanol fósil; toxicidad del alcohol residual.");
+  if (key === "etanol")
+    base.push("Cinética más lenta y separación glicerol/éster más compleja por mayor mutua solubilidad.");
+  return base;
+}
+
+// ====================================================================
+// FASE 3 — Caracterización técnica estimada
+// ====================================================================
+
+type Caracterizacion = {
+  fisicas: { propiedad: string; valor: string; metodo: string }[];
+  quimicas: { propiedad: string; valor: string; metodo: string }[];
+};
+
+function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
+  const { carbono } = normalizeAlcohol(p.alcoholNombre);
+  // Estimaciones tipográficas según literatura (Knothe, Van Gerpen, Demirbas).
+  const densidad = carbono <= 1 ? "875–890 kg/m³" : carbono === 2 ? "870–880 kg/m³" : "865–880 kg/m³";
+  const viscosidad = carbono <= 1 ? "3.5–5.0 cSt @40 °C" : carbono === 2 ? "4.0–5.5 cSt @40 °C" : "4.5–6.5 cSt @40 °C";
+  const inflamacion = carbono <= 1 ? "≥130 °C" : carbono === 2 ? "≥160 °C" : "≥170 °C";
+  const calor = carbono <= 1 ? "37–40 MJ/kg" : carbono === 2 ? "38–41 MJ/kg" : "39–42 MJ/kg";
+
+  return {
+    fisicas: [
+      { propiedad: "Apariencia", valor: "Líquido transparente, libre de partículas", metodo: "Visual / ISO 2049" },
+      { propiedad: "Color", valor: "Amarillo claro a ámbar (escala ASTM 1.0–3.0)", metodo: "ASTM D1500" },
+      { propiedad: "Olor", valor: "Característico, suave a éster graso", metodo: "Sensorial" },
+      { propiedad: "Densidad (15 °C)", valor: densidad, metodo: "ASTM D4052 / EN ISO 12185" },
+      { propiedad: "Viscosidad cinemática", valor: viscosidad, metodo: "ASTM D445 / EN ISO 3104" },
+      { propiedad: "Punto de inflamación", valor: inflamacion, metodo: "ASTM D93 (PMcc)" },
+      { propiedad: "Punto de nube", valor: "-3 a +12 °C (función del perfil saturado)", metodo: "ASTM D2500" },
+      { propiedad: "Punto de fluidez", valor: "-10 a +6 °C", metodo: "ASTM D97" },
+      { propiedad: "Conductividad eléctrica", valor: "<100 pS/m (alta resistividad)", metodo: "ASTM D2624" },
+      { propiedad: "Solubilidad", valor: "Miscible en hidrocarburos, alcoholes; insoluble en agua", metodo: "Cualitativa" },
+      { propiedad: "Volatilidad", valor: "Baja (presión de vapor <0.1 kPa @20 °C)", metodo: "ASTM D2879" },
+      { propiedad: "Poder calorífico", valor: calor, metodo: "ASTM D240" },
+    ],
+    quimicas: [
+      { propiedad: "Estabilidad oxidativa (Rancimat)", valor: "3–10 h @110 °C (mejorable con antioxidantes)", metodo: "EN 14112" },
+      { propiedad: "Polaridad", valor: "Polaridad intermedia (logP 7–10)", metodo: "Estimación QSPR" },
+      { propiedad: "Índice de acidez", valor: "<0.5 mg KOH/g (producto purificado)", metodo: "EN 14104" },
+      { propiedad: "Compatibilidad con materiales", valor: "Acero inoxidable y aluminio: alta. Cobre/zinc: media. Elastómeros NBR: baja", metodo: "ASTM D471" },
+      { propiedad: "Poder solvente (KB)", valor: "55–75 (similar a solventes oxigenados verdes)", metodo: "ASTM D1133" },
+      { propiedad: "Reactividad química", valor: "Susceptible a hidrólisis básica y oxidación por radicales libres", metodo: "Cinética química" },
+      { propiedad: "Biodegradabilidad", valor: ">90% en 28 días", metodo: "OECD 301B" },
+      { propiedad: "Toxicidad potencial", valor: "Baja (LD50 oral rata >5000 mg/kg)", metodo: "OECD 423" },
+      { propiedad: "Contenido energético estimado", valor: calor, metodo: "Bomba calorimétrica" },
+    ],
+  };
+}
+
+// ====================================================================
+// FASE 4 — Comparación contra biodiésel convencional (FAME NaOH)
+// ====================================================================
+
+type Comparativo = {
+  propiedad: string;
+  productoValor: string;
+  biodieselValor: string;
+  juicio: "Mejor" | "Similar" | "Inferior";
+  motivo: string;
+};
+
+function compararContraBiodiesel(p: Proyecto): Comparativo[] {
+  const { key } = normalizeAlcohol(p.alcoholNombre);
+  const esMetilico = key === "metanol";
+  const esEtilico = key === "etanol";
+  const esLargo = ["isopropanol", "propanol", "butanol"].includes(key);
+
+  const mejorOSim: "Mejor" | "Similar" | "Inferior" = esLargo ? "Mejor" : esEtilico ? "Similar" : "Similar";
+
+  return [
+    {
+      propiedad: "Conductividad eléctrica",
+      productoValor: "<100 pS/m",
+      biodieselValor: "<200 pS/m",
+      juicio: esMetilico ? "Similar" : "Mejor",
+      motivo: "Las cadenas alquílicas más largas reducen la movilidad iónica y aumentan la resistividad del fluido.",
+    },
+    {
+      propiedad: "Densidad",
+      productoValor: esLargo ? "865–880 kg/m³" : "870–890 kg/m³",
+      biodieselValor: "880 kg/m³",
+      juicio: "Similar",
+      motivo: "Diferencias menores al 2% por la longitud del grupo alquilo.",
+    },
+    {
+      propiedad: "Viscosidad",
+      productoValor: esLargo ? "4.5–6.5 cSt" : "3.5–5.5 cSt",
+      biodieselValor: "4.0–5.0 cSt",
+      juicio: esLargo ? "Similar" : "Similar",
+      motivo: "Aumenta linealmente con la longitud de cadena del alcohol.",
+    },
+    {
+      propiedad: "Poder calorífico",
+      productoValor: esLargo ? "39–42 MJ/kg" : "37–40 MJ/kg",
+      biodieselValor: "37–40 MJ/kg",
+      juicio: esLargo ? "Mejor" : "Similar",
+      motivo: "Mayor proporción de carbonos no oxigenados eleva la entalpía de combustión.",
+    },
+    {
+      propiedad: "Estabilidad oxidativa",
+      productoValor: "3–10 h",
+      biodieselValor: "6 h (mínimo EN 14112)",
+      juicio: esLargo ? "Mejor" : "Similar",
+      motivo: "Ramificaciones y cadenas largas reducen sitios susceptibles a peroxidación.",
+    },
+    {
+      propiedad: "Solvencia (KB)",
+      productoValor: esLargo ? "65–80" : "55–70",
+      biodieselValor: "55–60",
+      juicio: "Mejor",
+      motivo: "Mayor polaridad y momento dipolar incrementan el poder solvente frente a residuos orgánicos.",
+    },
+    {
+      propiedad: "Biodegradabilidad",
+      productoValor: ">90% / 28 d",
+      biodieselValor: ">90% / 28 d",
+      juicio: "Similar",
+      motivo: "Ambos pertenecen a la familia de ésteres grasos fácilmente metabolizables.",
+    },
+    {
+      propiedad: "Toxicidad",
+      productoValor: "Muy baja",
+      biodieselValor: "Baja",
+      juicio: mejorOSim,
+      motivo: "Ésteres etílicos/superiores eliminan la trazabilidad del metanol residual.",
+    },
+    {
+      propiedad: "Compatibilidad con motores",
+      productoValor: esMetilico ? "Alta (B7–B20)" : "Media-Alta",
+      biodieselValor: "Alta (B7–B20)",
+      juicio: esMetilico ? "Similar" : "Inferior",
+      motivo: "Especificaciones EN 14214 / ASTM D6751 están diseñadas para FAME.",
+    },
+    {
+      propiedad: "Compatibilidad con materiales",
+      productoValor: "Acero, Al: Alta",
+      biodieselValor: "Acero, Al: Alta",
+      juicio: "Similar",
+      motivo: "Compatibilidad similar con metales; ambos atacan elastómeros NBR.",
+    },
+    {
+      propiedad: "Facilidad de producción",
+      productoValor: esMetilico ? "Alta" : "Media",
+      biodieselValor: "Alta",
+      juicio: esMetilico ? "Similar" : "Inferior",
+      motivo: "Cinética y separación de fases más lentas con alcoholes superiores al metanol.",
+    },
+    {
+      propiedad: "Costo potencial",
+      productoValor: esMetilico ? "Bajo" : "Medio",
+      biodieselValor: "Bajo",
+      juicio: esMetilico ? "Similar" : "Inferior",
+      motivo: "Alcoholes superiores tienen mayor costo que el metanol fósil.",
+    },
+    {
+      propiedad: "Valor agregado",
+      productoValor: esLargo ? "Alto (solvente/lubricante verde)" : esEtilico ? "Alto (100% renovable)" : "Medio",
+      biodieselValor: "Medio (combustible)",
+      juicio: esMetilico ? "Similar" : "Mejor",
+      motivo: "Diversificación hacia nichos no combustibles con mayor margen.",
+    },
+  ];
+}
+
+// ====================================================================
+// FASE 5 — Nichos de mercado
+// ====================================================================
+
+type Nicho = {
+  nombre: string;
+  justificacion: string;
+  ventajas: string;
+  limitaciones: string;
+  potencial: "Alto" | "Medio" | "Bajo";
+  score: number;
+};
+
+function evaluarNichos(p: Proyecto): { nichos: Nicho[]; recomendado: Nicho } {
+  const { key } = normalizeAlcohol(p.alcoholNombre);
+  const esLargo = ["isopropanol", "propanol", "butanol"].includes(key);
+  const esEtilico = key === "etanol";
+  const esMetilico = key === "metanol";
+
+  const base: Nicho[] = [
+    {
+      nombre: "Biocombustibles (B7–B100)",
+      justificacion: "Cumple parámetros generales de FAME/FAEE; reemplazo parcial del diésel fósil.",
+      ventajas: "Mercado consolidado, marco normativo claro (EN 14214 / ASTM D6751).",
+      limitaciones: "Margen ajustado y competencia con biodiésel industrial.",
+      potencial: esMetilico ? "Alto" : "Medio",
+      score: esMetilico ? 85 : 65,
+    },
+    {
+      nombre: "Solventes industriales verdes",
+      justificacion: "Polaridad intermedia y alto KB permiten reemplazar xileno, MEK y solventes clorados.",
+      ventajas: "Baja toxicidad, biodegradable, bajo COV.",
+      limitaciones: "Volatilidad menor que solventes tradicionales (secado más lento).",
+      potencial: esLargo ? "Alto" : "Medio",
+      score: esLargo ? 90 : 70,
+    },
+    {
+      nombre: "Desengrasantes y limpieza industrial",
+      justificacion: "Excelente afinidad por grasas y aceites, fácil enjuague con tensoactivos.",
+      ventajas: "Reemplaza solventes derivados del petróleo en talleres y plantas alimenticias.",
+      limitaciones: "Requiere formulación con coadyuvantes para optimizar el desempeño.",
+      potencial: "Alto",
+      score: 88,
+    },
+    {
+      nombre: "Lubricantes biodegradables",
+      justificacion: "Lubricidad intrínseca elevada (HFRR <460 µm) y baja toxicidad ambiental.",
+      ventajas: "Aplicable a maquinaria agrícola, forestal y marina.",
+      limitaciones: "Estabilidad oxidativa limitada; requiere antioxidantes.",
+      potencial: esLargo ? "Alto" : "Medio",
+      score: esLargo ? 87 : 72,
+    },
+    {
+      nombre: "Fluidos hidráulicos biodegradables",
+      justificacion: "Viscosidad y punto de inflamación adecuados para sistemas hidráulicos HEES.",
+      ventajas: "Cumple ISO 15380 (HEES) con paquete de aditivos.",
+      limitaciones: "Sensible a contaminación con agua.",
+      potencial: esLargo ? "Alto" : "Medio",
+      score: esLargo ? 82 : 65,
+    },
+    {
+      nombre: "Aditivos químicos y plastificantes",
+      justificacion: "Compatibilidad con polímeros PVC y mejoras de fluidez en formulaciones.",
+      ventajas: "Reemplazo de ftalatos en aplicaciones no críticas.",
+      limitaciones: "Migración polimérica a controlar.",
+      potencial: "Medio",
+      score: 65,
+    },
+    {
+      nombre: "Cosmética e higiene personal",
+      justificacion: "Ésteres grasos similares a emolientes comerciales (palmitato de isopropilo).",
+      ventajas: "Sensorialidad agradable, no comedogénico, biodegradable.",
+      limitaciones: "Requiere refinación adicional (color, olor) y grado cosmético.",
+      potencial: key === "isopropanol" ? "Alto" : "Medio",
+      score: key === "isopropanol" ? 86 : 60,
+    },
+    {
+      nombre: "Farmacéutica (excipientes)",
+      justificacion: "Vehículo lipofílico para formulaciones tópicas y veterinarias.",
+      ventajas: "Baja toxicidad y compatibilidad con principios activos liposolubles.",
+      limitaciones: "Exige certificaciones GMP y pureza farmacopea.",
+      potencial: "Medio",
+      score: 55,
+    },
+    {
+      nombre: "Agroquímica (coadyuvantes)",
+      justificacion: "Solvente y vehículo de plaguicidas y bioestimulantes.",
+      ventajas: "Biodegradabilidad reduce impacto ambiental en cultivos.",
+      limitaciones: "Compatibilidad con principio activo a verificar.",
+      potencial: "Medio",
+      score: 60,
+    },
+    {
+      nombre: "Tratamiento de superficies",
+      justificacion: "Solvente para limpieza, decapado y preparación previa a recubrimientos.",
+      ventajas: "Reduce uso de solventes clorados, mejora seguridad ocupacional.",
+      limitaciones: "Tiempo de evaporación mayor.",
+      potencial: "Medio",
+      score: 68,
+    },
+    {
+      nombre: "Materia prima oleoquímica",
+      justificacion: "Plataforma para alcoholes grasos, aminas grasas, amidas, sulfonatos y tensoactivos.",
+      ventajas: "Alto valor agregado y entrada al mercado de especialidades químicas.",
+      limitaciones: "Requiere integración con procesos de hidrogenación / amidación.",
+      potencial: "Alto",
+      score: 80,
+    },
+  ];
+
+  const recomendado = [...base].sort((a, b) => b.score - a.score)[0];
+  return { nichos: base, recomendado };
+}
+
+// ====================================================================
+// UI — Componentes auxiliares
+// ====================================================================
+
+type FieldProps = {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  unit?: string;
+  type?: "text" | "number" | "textarea";
+};
+
+function Field({ label, value, onChange, placeholder, unit, type = "text" }: FieldProps) {
+  return (
+    <label className="flex flex-col gap-1 text-sm">
+      <span className="font-medium text-foreground">
+        {label}
+        {unit ? <span className="ml-1 text-muted-foreground">({unit})</span> : null}
+      </span>
+      {type === "textarea" ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+        />
+      )}
+    </label>
+  );
+}
+
+function Section({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2">
+        <Icon className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Badge({ tone, children }: { tone: "ok" | "warn" | "bad" | "info"; children: React.ReactNode }) {
+  const map = {
+    ok: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
+    warn: "bg-amber-500/15 text-amber-500 border-amber-500/30",
+    bad: "bg-destructive/15 text-destructive border-destructive/30",
+    info: "bg-primary/15 text-primary border-primary/30",
+  } as const;
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${map[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+// ====================================================================
+// Componente principal
+// ====================================================================
+
+function PlataformaOleoquimica() {
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
   const [dark, setDark] = useState(true);
-  const [inputs, setInputs] = useState<Inputs>(initialInputs);
-  const [submitted, setSubmitted] = useState(false);
-  const [tab, setTab] = useState("fisica");
-  const [error, setError] = useState<string | null>(null);
-
-  // ===== Integración en tiempo real: condiciones ambientales (Open-Meteo) =====
-  type Ambient = {
-    temp: number;
-    humidity: number;
-    wind: number;
-    pressure: number;
-    code: number;
-    time: string;
-    place: string;
-  };
-  const [ambient, setAmbient] = useState<Ambient | null>(null);
-  const [ambientLoading, setAmbientLoading] = useState(false);
-  const [ambientError, setAmbientError] = useState<string | null>(null);
-
-  const fetchAmbient = async () => {
-    setAmbientLoading(true);
-    setAmbientError(null);
-    try {
-      // Bogotá, Colombia — planta de referencia. Sin API key.
-      const url =
-        "https://api.open-meteo.com/v1/forecast?latitude=4.7110&longitude=-74.0721" +
-        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code" +
-        "&timezone=America%2FBogota";
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const c = json.current ?? {};
-      setAmbient({
-        temp: Number(c.temperature_2m),
-        humidity: Number(c.relative_humidity_2m),
-        wind: Number(c.wind_speed_10m),
-        pressure: Number(c.surface_pressure),
-        code: Number(c.weather_code),
-        time: String(c.time ?? ""),
-        place: "Bogotá, CO",
-      });
-    } catch (e) {
-      setAmbientError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setAmbientLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAmbient();
-    const id = setInterval(fetchAmbient, 5 * 60 * 1000); // refresco cada 5 min
-    return () => clearInterval(id);
-  }, []);
-
-  // Recomendación operativa basada en clima en vivo
-  const ambientRecommendation = useMemo(() => {
-    if (!ambient) return null;
-    // T ambiente alta ⇒ subir T operativa para mantener viscosidad estable
-    // Humedad ambiente alta ⇒ activar secado al vacío preventivo
-    const tSugerida = Math.round(
-      Math.max(LIMITS.tempOpMin, Math.min(LIMITS.tempOpMax, ambient.temp + 35)),
-    );
-    const riesgoHumedad = ambient.humidity >= 75;
-    return { tSugerida, riesgoHumedad };
-  }, [ambient]);
+  const [tab, setTab] = useState("materia");
+  const [p, setP] = useState<Proyecto>(initial);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -198,228 +633,230 @@ function Dashboard() {
     }
   }, [dark]);
 
-  const parsed = useMemo(
-    () => ({
-      densidad: parseFloat(inputs.densidad),
-      viscosidad: parseFloat(inputs.viscosidad),
-      humedad: parseFloat(inputs.humedad),
-      acidez: parseFloat(inputs.acidez),
-      rigidez: parseFloat(inputs.rigidez),
-      conductividad: parseFloat(inputs.conductividad),
-      inflamacion: parseFloat(inputs.inflamacion),
-      oxidacion: parseFloat(inputs.oxidacion),
-      tempOperativa: parseFloat(inputs.tempOperativa),
-      compatibilidad: parseFloat(inputs.compatibilidad),
-      pureza: parseFloat(inputs.pureza),
-      contaminacion: parseFloat(inputs.contaminacion),
-    }),
-    [inputs],
+  const set = <K extends keyof Proyecto>(k: K) => (v: string) => setP((s) => ({ ...s, [k]: v }));
+
+  const ester = useMemo(() => inferirEster(p), [p]);
+  const carac = useMemo(() => estimarCaracterizacion(p, ester), [p, ester]);
+  const comparativa = useMemo(() => compararContraBiodiesel(p), [p]);
+  const { nichos, recomendado } = useMemo(() => evaluarNichos(p), [p]);
+
+  const dataComparacion = useMemo(
+    () =>
+      comparativa.map((c) => ({
+        propiedad: c.propiedad,
+        score: c.juicio === "Mejor" ? 100 : c.juicio === "Similar" ? 70 : 40,
+      })),
+    [comparativa],
   );
 
-  const numericsValid = Object.values(parsed).every((v) => !isNaN(v));
-  const visualValid = inputs.color !== "" && inputs.aspecto !== "";
-  const allValid = numericsValid && visualValid;
-  const colorObj = COLOR_OPTIONS.find((c) => c.id === inputs.color);
+  const dataRadar = useMemo(
+    () => [
+      { eje: "Solvencia", v: 85 },
+      { eje: "Biodegradab.", v: 95 },
+      { eje: "Lubricidad", v: 80 },
+      { eje: "Estab. ox.", v: 60 },
+      { eje: "Energía", v: 75 },
+      { eje: "Seguridad", v: 90 },
+    ],
+    [],
+  );
+
+  const dataNichos = useMemo(
+    () => nichos.map((n) => ({ nombre: n.nombre.split(" ")[0], score: n.score })),
+    [nichos],
+  );
 
   if (!authChecked) return null;
 
-  // Lógica de viabilidad
-  const criticoAcidez = numericsValid && parsed.acidez > LIMITS.acidez;
-  const criticoHumedad = numericsValid && parsed.humedad > LIMITS.humedad;
-  const alertaVisual =
-    visualValid && (inputs.color === "marron" || inputs.aspecto === "turbio");
-  const criticoRigidez =
-    allValid && parsed.rigidez < LIMITS.rigidezMin;
-  const tempFueraRango =
-    allValid && (parsed.tempOperativa < LIMITS.tempOpMin || parsed.tempOperativa > LIMITS.tempOpMax);
-  const contaminacionAlta =
-    allValid && parsed.contaminacion > LIMITS.contaminacionMax;
-  const criticoConductividad =
-    allValid && parsed.conductividad > LIMITS.conductividadMax;
-  const oxidacionBaja =
-    allValid && parsed.oxidacion < LIMITS.oxidacionMin;
+  // ============== Generador de PDF (FASE 6) ==============
+  const generarPDF = () => {
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    const M = 50;
+    const W = 612 - 2 * M;
+    let y = M;
 
-  // NO VIABLE si: humedad alta, conductividad elevada, baja rigidez o contaminación excesiva
-  const noViable =
-    criticoHumedad || criticoConductividad || criticoRigidez || contaminacionAlta;
-  const viable = allValid && !criticoAcidez && !noViable;
-
-  // Indicador global: Óptimo / Precaución / Crítico
-  const precauciones =
-    (tempFueraRango ? 1 : 0) +
-    (oxidacionBaja ? 1 : 0) +
-    (alertaVisual ? 1 : 0);
-  const estadoGlobal: "optimo" | "precaucion" | "critico" = !allValid
-    ? "precaucion"
-    : !viable
-      ? "critico"
-      : precauciones > 0
-        ? "precaucion"
-        : "optimo";
-
-  // ===== Indicadores dieléctricos (tiempo real, escala 0–100) =====
-  const clampN = (v: number, mn = 0, mx = 100) => Math.max(mn, Math.min(mx, v));
-  const idxRigidez = allValid ? clampN((parsed.rigidez / LIMITS.rigidezMin) * 80) : 0;
-  const idxConduct = allValid
-    ? clampN(100 - (parsed.conductividad / LIMITS.conductividadMax) * 80)
-    : 0;
-  const eficienciaDielectrica = allValid ? clampN(idxRigidez * 0.6 + idxConduct * 0.4) : 0;
-
-  const tMid = (LIMITS.tempOpMin + LIMITS.tempOpMax) / 2;
-  const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
-  const idxTemp = allValid ? clampN(100 - (Math.abs(parsed.tempOperativa - tMid) / tSpan) * 100) : 0;
-  const idxOxid = allValid ? clampN((parsed.oxidacion / LIMITS.oxidacionMin) * 90) : 0;
-  const estabilidadTermica = allValid ? clampN(idxTemp * 0.55 + idxOxid * 0.45) : 0;
-
-  const idxHumedad = allValid ? clampN(100 - (parsed.humedad / LIMITS.humedad) * 100) : 0;
-  const viscOk = allValid
-    ? parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax
-      ? 100
-      : 60
-    : 0;
-  const capacidadAislante = allValid
-    ? clampN(idxRigidez * 0.5 + idxHumedad * 0.35 + viscOk * 0.15)
-    : 0;
-
-  // Riesgo operativo (0 = bajo, 100 = alto)
-  const riesgoOperativo = allValid
-    ? clampN(
-        (parsed.humedad / LIMITS.humedad) * 30 +
-          (parsed.conductividad / LIMITS.conductividadMax) * 30 +
-          Math.max(0, (LIMITS.rigidezMin - parsed.rigidez) / LIMITS.rigidezMin) * 25 +
-          (parsed.contaminacion / LIMITS.contaminacionMax) * 15,
-      )
-    : 0;
-
-  // Estabilidad del fluido (oxidación, contaminación, aspecto/color, viscosidad)
-  const idxContam = allValid ? clampN(100 - (parsed.contaminacion / LIMITS.contaminacionMax) * 100) : 0;
-  const idxVisual = (inputs.aspecto === "limpio" ? 100 : 50) - (inputs.color === "marron" ? 25 : 0);
-  const estabilidadFluido = allValid
-    ? clampN(idxOxid * 0.4 + idxContam * 0.3 + viscOk * 0.15 + clampN(idxVisual) * 0.15)
-    : 0;
-
-  const dielectricMetrics = [
-    { name: "Ef. dieléctrica", Valor: Math.round(eficienciaDielectrica), Óptimo: 80, invert: false },
-    { name: "Estab. térmica", Valor: Math.round(estabilidadTermica), Óptimo: 80, invert: false },
-    { name: "Cap. aislante", Valor: Math.round(capacidadAislante), Óptimo: 80, invert: false },
-    { name: "Riesgo oper.", Valor: Math.round(riesgoOperativo), Óptimo: 20, invert: true },
-    { name: "Estab. fluido", Valor: Math.round(estabilidadFluido), Óptimo: 80, invert: false },
-  ];
-
-  const chartData = allValid ? dielectricMetrics : [];
-
-  const handleChange =
-    (key: keyof Inputs) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      setInputs((p) => ({ ...p, [key]: e.target.value }));
+    const h1 = (t: string) => {
+      if (y > 720) { doc.addPage(); y = M; }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text(t, M, y);
+      y += 18;
     };
+    const h2 = (t: string) => {
+      if (y > 730) { doc.addPage(); y = M; }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(t, M, y);
+      y += 14;
+    };
+    const para = (t: string) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const lines = doc.splitTextToSize(t || "—", W);
+      lines.forEach((ln: string) => {
+        if (y > 750) { doc.addPage(); y = M; }
+        doc.text(ln, M, y);
+        y += 12;
+      });
+      y += 4;
+    };
+    const kv = (k: string, v: string) => para(`• ${k}: ${v || "—"}`);
 
-  const handleAnalyze = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!allValid) {
-      setError("Completa todos los campos (incluye color y aspecto visual).");
-      // Saltar a la primera pestaña que tenga campo vacío
-      const fisicaIncompleta =
-        ["densidad", "viscosidad", "humedad"].some(
-          (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
-        ) || !inputs.color || !inputs.aspecto;
-      const quimicaIncompleta = ["acidez", "rigidez", "conductividad", "inflamacion", "oxidacion"].some(
-        (k) => isNaN(parseFloat(inputs[k as keyof Inputs])),
-      );
-      if (fisicaIncompleta) setTab("fisica");
-      else if (quimicaIncompleta) setTab("quimica");
-      else setTab("control");
-      return;
-    }
-    setError(null);
-    setSubmitted(true);
-  };
-
-  const handleDownload = () => {
-    const doc = new jsPDF();
-    const date = new Date().toLocaleString("es-CO");
-    let y = 20;
-    doc.setFontSize(16);
-    doc.text("Reporte de Calidad — Biodisolvente Dieléctrico", 14, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.text(`Fecha: ${date}`, 14, y);
-    y += 12;
-
+    // Portada
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Informe Técnico — Ésteres Monoalquílicos", M, y); y += 22;
     doc.setFontSize(12);
-    doc.text("1. Caracterización Física", 14, y); y += 7;
+    doc.text("de Ácidos Grasos a partir de Aceite Residual de Cocina", M, y); y += 24;
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
-    doc.text(`• Densidad: ${parsed.densidad} kg/m³ (rango ${LIMITS.densidadMin}-${LIMITS.densidadMax})`, 18, y); y += 6;
-    doc.text(`• Viscosidad cinemática: ${parsed.viscosidad} cSt (rango ${LIMITS.viscosidadMin}-${LIMITS.viscosidadMax})`, 18, y); y += 6;
-    doc.text(`• Humedad: ${parsed.humedad} % (límite ≤ ${LIMITS.humedad})`, 18, y); y += 10;
-    doc.text(`• Color del biodisolvente: ${colorObj?.label ?? "—"}`, 18, y); y += 6;
-    doc.text(`• Aspecto visual: ${inputs.aspecto === "limpio" ? "Limpio/Transparente" : "Turbio/Sedimentos"}`, 18, y); y += 10;
+    doc.text(`Producto inferido: ${ester.tipo} (${ester.abreviatura})`, M, y); y += 14;
+    doc.text(`Fecha: ${new Date().toLocaleDateString()}`, M, y); y += 24;
 
-    doc.setFontSize(12);
-    doc.text("2. Caracterización Química", 14, y); y += 7;
-    doc.setFontSize(10);
-    doc.text(`• Índice de Acidez: ${parsed.acidez} mg KOH/g (límite ≤ ${LIMITS.acidez})`, 18, y); y += 6;
-    doc.text(`• Rigidez Dieléctrica: ${parsed.rigidez} kV/2.5mm (mínimo ≥ ${LIMITS.rigidezMin})`, 18, y); y += 6;
-    doc.text(`• Conductividad Eléctrica: ${parsed.conductividad} pS/m (límite ≤ ${LIMITS.conductividadMax})`, 18, y); y += 6;
-    doc.text(`• Punto de Inflamación: ${parsed.inflamacion} °C (mínimo ≥ ${LIMITS.inflamacionMin})`, 18, y); y += 6;
-    doc.text(`• Estabilidad Oxidativa: ${parsed.oxidacion} h (mínimo ≥ ${LIMITS.oxidacionMin})`, 18, y); y += 10;
+    h1("1. Resumen ejecutivo");
+    para(
+      `Se documenta la obtención de ${ester.tipo} (${ester.abreviatura}) a partir de ${p.tipoAceite || "aceite residual de cocina"} mediante ${p.catAcidoNombre ? "esterificación ácida previa y " : ""}transesterificación catalizada por ${p.catBasicoNombre || "catalizador básico"} empleando ${p.alcoholNombre || "alcohol"} en relación molar ${p.relacionMolar || "no especificada"}. El producto presenta propiedades fisicoquímicas comparables o superiores al biodiésel convencional FAME-NaOH en parámetros clave de solvencia y biodegradabilidad, posicionándolo como candidato preferente para el nicho de ${recomendado.nombre}.`,
+    );
 
-    doc.setFontSize(12);
-    doc.text("3. Variables de Control Operativo", 14, y); y += 7;
-    doc.setFontSize(10);
-    doc.text(`• Temperatura operativa: ${parsed.tempOperativa} °C (rango ${LIMITS.tempOpMin}-${LIMITS.tempOpMax})`, 18, y); y += 6;
-    doc.text(`• Compatibilidad dieléctrica: ${parsed.compatibilidad} % (mínimo ≥ ${LIMITS.compatibilidadMin})`, 18, y); y += 6;
-    doc.text(`• Pureza del biodisolvente: ${parsed.pureza} % (mínimo ≥ ${LIMITS.purezaMin})`, 18, y); y += 6;
-    doc.text(`• Nivel de contaminación: ${parsed.contaminacion} ppm (límite ≤ ${LIMITS.contaminacionMax})`, 18, y); y += 12;
+    h1("2. Introducción");
+    para(
+      "El aprovechamiento de aceites residuales de cocina (ARC) reduce la carga ambiental por vertidos, valoriza un residuo abundante y suministra una materia prima económica para la producción de ésteres monoalquílicos de ácidos grasos. Estos ésteres, lejos de limitarse al biodiésel, constituyen una plataforma oleoquímica de aplicaciones múltiples.",
+    );
 
-    doc.setFontSize(12);
-    doc.text(`Resultado: ${viable ? "APTO" : "NO APTO"}`, 14, y); y += 8;
-    doc.setFontSize(10);
-    if (!viable) {
-      doc.text("Recomendaciones (ASTM D6871 / IEC 60296):", 14, y); y += 6;
-      if (criticoAcidez) { doc.text("- Neutralización alcalina y refinado con tierras activadas.", 18, y); y += 6; }
-      if (criticoHumedad) { doc.text("- Deshidratacion al vacio (<1 kPa) hasta humedad < 0.05%.", 18, y); y += 6; }
-    } else {
-      doc.text("Cumple parametros de calidad para uso como biodisolvente dielectrico.", 14, y); y += 6;
-    }
-    if (tempFueraRango) {
-      doc.text(`! Estabilidad termica comprometida: T fuera de ${LIMITS.tempOpMin}-${LIMITS.tempOpMax} C.`, 14, y); y += 6;
-    }
-    if (criticoRigidez) {
-      doc.text(`! Rigidez dielectrica ${parsed.rigidez} kV por debajo del minimo (${LIMITS.rigidezMin}).`, 14, y); y += 6;
-    }
-    if (contaminacionAlta) {
-      doc.text(`! Contaminacion ${parsed.contaminacion} ppm excede limite (${LIMITS.contaminacionMax}).`, 14, y); y += 6;
-    }
-    if (alertaVisual) {
-      doc.text("! Pre-tratamiento recomendado: filtracion/refinacion por aspecto o color.", 14, y); y += 6;
-    }
-    doc.save(`reporte-biodisolvente-${Date.now()}.pdf`);
+    h1("3. Objetivos");
+    para("• Caracterizar la materia prima y el producto obtenido.");
+    para("• Determinar el tipo de éster, su mecanismo de formación y sus propiedades.");
+    para("• Comparar el producto contra biodiésel convencional FAME-NaOH.");
+    para("• Identificar el nicho de mercado más prometedor y proponer una aplicación comercial.");
+
+    h1("4. Materias primas");
+    h2("4.1 Aceite residual");
+    kv("Tipo", p.tipoAceite);
+    kv("Origen", p.origenAceite);
+    kv("Índice de acidez (mg KOH/g)", p.acidez);
+    kv("Densidad (g/mL)", p.densidadAceite);
+    kv("Humedad (%)", p.humedadAceite);
+    kv("Índice de saponificación (mg KOH/g)", p.saponificacion);
+    kv("Índice de yodo (g I2/100 g)", p.yodo);
+    kv("Perfil de ácidos grasos", p.perfilAG);
+    h2("4.2 Alcohol");
+    kv("Nombre", p.alcoholNombre);
+    kv("Fórmula", p.alcoholFormula);
+    kv("Pureza (%)", p.alcoholPureza);
+    kv("Relación molar aceite:alcohol", p.relacionMolar);
+    kv("Función", p.funcionAlcohol);
+    h2("4.3 Catalizadores");
+    kv("Básico — Nombre", p.catBasicoNombre);
+    kv("Básico — Concentración", p.catBasicoConcentracion);
+    kv("Básico — Cantidad", p.catBasicoCantidad);
+    kv("Básico — Justificación", p.catBasicoJustificacion);
+    kv("Ácido — Nombre", p.catAcidoNombre);
+    kv("Ácido — Concentración", p.catAcidoConcentracion);
+    kv("Ácido — Cantidad", p.catAcidoCantidad);
+    kv("Ácido — Justificación", p.catAcidoJustificacion);
+
+    h1("5. Metodología");
+    kv("Caracterización de materia prima", p.metCaracterizacion);
+    kv("Esterificación", p.metEsterificacion);
+    kv("Transesterificación", p.metTransesterificacion);
+    kv("Lavado", p.metLavado);
+    kv("Secado", p.metSecado);
+    kv("Purificación", p.metPurificacion);
+    kv("Caracterización del producto", p.metProductoFinal);
+    h2("Condiciones operacionales");
+    kv("Temperatura (°C)", p.temperatura);
+    kv("Tiempo (min)", p.tiempoReaccion);
+    kv("Agitación (rpm)", p.agitacion);
+    kv("Presión", p.presion);
+    kv("Rendimiento (%)", p.rendimiento);
+    kv("Conversión (%)", p.conversion);
+
+    h1("6. Fundamento químico");
+    kv("Tipo de éster", ester.tipo);
+    kv("Familia", ester.familia);
+    kv("Estructura", ester.estructura);
+    kv("Mecanismo", ester.mecanismo);
+    kv("Influencia del alcohol", ester.influenciaAlcohol);
+    kv("Influencia del catalizador", ester.influenciaCatalizador);
+
+    h1("7. Resultados de caracterización");
+    h2("7.1 Propiedades físicas");
+    carac.fisicas.forEach((f) => kv(f.propiedad, `${f.valor} [${f.metodo}]`));
+    h2("7.2 Propiedades químicas");
+    carac.quimicas.forEach((q) => kv(q.propiedad, `${q.valor} [${q.metodo}]`));
+
+    h1("8. Comparación con biodiésel convencional (FAME-NaOH)");
+    comparativa.forEach((c) =>
+      para(`• ${c.propiedad} — Producto: ${c.productoValor} | Biodiésel: ${c.biodieselValor} → ${c.juicio}. ${c.motivo}`),
+    );
+
+    h1("9. Análisis de ventajas y desventajas");
+    h2("Ventajas");
+    ester.ventajas.forEach((v) => para(`• ${v}`));
+    h2("Limitaciones");
+    ester.limitaciones.forEach((v) => para(`• ${v}`));
+
+    h1("10. Identificación de nichos de mercado");
+    nichos.forEach((n) =>
+      para(`• ${n.nombre} [Potencial: ${n.potencial}] — ${n.justificacion} Ventajas: ${n.ventajas} Limitaciones: ${n.limitaciones}`),
+    );
+
+    h1("11. Propuesta de aplicación comercial");
+    para(
+      `Se recomienda enfocar el producto en el nicho de ${recomendado.nombre} (score ${recomendado.score}/100). ${recomendado.justificacion} Ventajas competitivas: ${recomendado.ventajas} Limitaciones a gestionar: ${recomendado.limitaciones}`,
+    );
+
+    h1("12. Conclusiones");
+    para(
+      `El proceso evaluado permite obtener ${ester.tipo} con propiedades coherentes con la literatura oleoquímica. La combinación de ${p.alcoholNombre || "alcohol seleccionado"} y ${p.catBasicoNombre || "catalizador básico"} determina la estructura final del éster y orienta su aplicación más allá del biocombustible tradicional.`,
+    );
+
+    h1("13. Recomendaciones");
+    para("• Reducir la acidez inicial por debajo de 1 mg KOH/g antes de la transesterificación básica.");
+    para("• Controlar humedad <0.05% para evitar saponificación.");
+    para("• Optimizar la relación molar alcohol:aceite por superficie de respuesta.");
+    para("• Incorporar antioxidantes (TBHQ, pirogalol) para mejorar la estabilidad oxidativa.");
+    para("• Evaluar refinación adicional según el nicho objetivo (cosmético, lubricante, solvente).");
+
+    h1("14. Referencias bibliográficas");
+    para("• Knothe, G., Van Gerpen, J., Krahl, J. (2010). The Biodiesel Handbook. AOCS Press.");
+    para("• Demirbas, A. (2009). Biodiesel: A Realistic Fuel Alternative for Diesel Engines. Springer.");
+    para("• Ma, F., Hanna, M. A. (1999). Biodiesel production: a review. Bioresource Technology 70(1), 1–15.");
+    para("• Meher, L. C., Vidya Sagar, D., Naik, S. N. (2006). Technical aspects of biodiesel production by transesterification. Renewable & Sustainable Energy Reviews 10(3), 248–268.");
+    para("• EN 14214; ASTM D6751; ISO 15380; OECD 301B.");
+
+    doc.save(`Informe_${ester.abreviatura}_${Date.now()}.pdf`);
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors">
-      <header className="border-b border-border bg-card/50 backdrop-blur sticky top-0 z-10">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
-              <Factory className="h-6 w-6 text-primary" />
+            <div className="rounded-lg bg-primary/15 p-2 text-primary">
+              <FlaskConical className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-bold tracking-tight">
-                QC Biodisolvente Dieléctrico
-              </h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">
-                Control de Calidad y Optimización · Aislantes Líquidos
+              <h1 className="text-lg font-bold leading-tight">Plataforma Oleoquímica</h1>
+              <p className="text-xs text-muted-foreground">
+                Producción y análisis de ésteres monoalquílicos desde aceite residual
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDark((d) => !d)}
-              className="p-2 rounded-md border border-border hover:bg-accent transition-colors"
+              className="rounded-md border border-border p-2 hover:bg-accent"
               aria-label="Cambiar tema"
             >
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={generarPDF}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <Download className="h-4 w-4" /> Informe PDF
             </button>
             <button
               onClick={() => {
@@ -427,909 +864,260 @@ function Dashboard() {
                 localStorage.removeItem("authUser");
                 navigate({ to: "/login" });
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors text-xs font-medium"
+              className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
             >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Salir</span>
+              <LogOut className="h-4 w-4" /> Salir
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard icon={<Activity className="h-4 w-4" />} label="Estado planta" value="Operativa" tone="ok" />
-          <StatCard
-            icon={<Thermometer className="h-4 w-4" />}
-            label="T. ambiente (vivo)"
-            value={ambient ? `${ambient.temp.toFixed(1)} °C` : ambientLoading ? "…" : "—"}
-            tone={ambient ? "ok" : "muted"}
-          />
-          <StatCard icon={<Beaker className="h-4 w-4" />} label="Norma" value="ASTM D6871 / IEC 60296" tone="muted" />
-          <StatCard
-            icon={submitted && viable ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            label="Último análisis"
-            value={!submitted ? "Pendiente" : viable ? "Apto" : "No apto"}
-            tone={!submitted ? "muted" : viable ? "ok" : "danger"}
-          />
-        </div>
+      <main className="mx-auto max-w-7xl px-6 py-6">
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
+            <TabsTrigger value="materia"><Droplets className="mr-1 h-4 w-4" />Materia prima</TabsTrigger>
+            <TabsTrigger value="reactivos"><Beaker className="mr-1 h-4 w-4" />Reactivos</TabsTrigger>
+            <TabsTrigger value="proceso"><Settings2 className="mr-1 h-4 w-4" />Proceso</TabsTrigger>
+            <TabsTrigger value="analisis"><Atom className="mr-1 h-4 w-4" />Análisis</TabsTrigger>
+            <TabsTrigger value="comparacion"><TrendingUp className="mr-1 h-4 w-4" />Comparación</TabsTrigger>
+            <TabsTrigger value="mercado"><Target className="mr-1 h-4 w-4" />Mercado</TabsTrigger>
+            <TabsTrigger value="informe"><ScrollText className="mr-1 h-4 w-4" />Informe</TabsTrigger>
+          </TabsList>
 
-        {/* Telemetría ambiental en tiempo real (Open-Meteo) */}
-        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <CloudSun className="h-4 w-4" /> Condiciones ambientales en vivo
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-normal normal-case">
-                <MapPin className="h-3 w-3" /> {ambient?.place ?? "Bogotá, CO"}
-              </span>
-              {ambient && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-normal normal-case">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  LIVE · Open-Meteo
-                </span>
-              )}
-            </h2>
-            <button
-              onClick={fetchAmbient}
-              disabled={ambientLoading}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border hover:bg-accent transition-colors text-xs font-medium disabled:opacity-50"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${ambientLoading ? "animate-spin" : ""}`} />
-              Actualizar
-            </button>
-          </div>
-
-          {ambientError && (
-            <p className="text-xs text-destructive mb-3">No se pudo obtener telemetría: {ambientError}</p>
-          )}
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <MetricBox
-              label="Temperatura"
-              value={ambient ? `${ambient.temp.toFixed(1)} °C` : "—"}
-              sub="Aire externo"
-            />
-            <MetricBox
-              label="Humedad relativa"
-              value={ambient ? `${ambient.humidity.toFixed(0)} %` : "—"}
-              sub={ambient && ambient.humidity >= 75 ? "Alta · riesgo de absorción" : "Dentro de tolerancia"}
-            />
-            <MetricBox
-              label="Viento"
-              value={ambient ? `${ambient.wind.toFixed(1)} km/h` : "—"}
-              sub="Ventilación de planta"
-            />
-            <MetricBox
-              label="Presión"
-              value={ambient ? `${ambient.pressure.toFixed(0)} hPa` : "—"}
-              sub="Superficie"
-            />
-          </div>
-
-          {ambientRecommendation && (
-            <div className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="text-xs text-foreground">
-                <p className="font-semibold flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-primary" />
-                  Recomendación operativa en tiempo real
-                </p>
-                <p className="text-muted-foreground mt-1">
-                  Con T. ambiente de <span className="font-mono text-foreground">{ambient!.temp.toFixed(1)} °C</span>,
-                  la temperatura operativa sugerida es{" "}
-                  <span className="font-mono text-primary">{ambientRecommendation.tSugerida} °C</span>.
-                  {ambientRecommendation.riesgoHumedad &&
-                    " Humedad ambiental alta: activar deshidratación al vacío preventiva."}
-                </p>
+          {/* ============ Materia prima ============ */}
+          <TabsContent value="materia" className="mt-6 space-y-6">
+            <Section title="1.1 Aceite residual de cocina" icon={Droplets}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Tipo de aceite" value={p.tipoAceite} onChange={set("tipoAceite")} placeholder="Ej: Mezcla soya/palma" />
+                <Field label="Origen" value={p.origenAceite} onChange={set("origenAceite")} placeholder="Restaurante, hogar, industrial..." />
+                <Field label="Índice de acidez" unit="mg KOH/g" type="number" value={p.acidez} onChange={set("acidez")} />
+                <Field label="Densidad" unit="g/mL" type="number" value={p.densidadAceite} onChange={set("densidadAceite")} />
+                <Field label="Humedad" unit="%" type="number" value={p.humedadAceite} onChange={set("humedadAceite")} />
+                <Field label="Índice de saponificación" unit="mg KOH/g" type="number" value={p.saponificacion} onChange={set("saponificacion")} />
+                <Field label="Índice de yodo" unit="g I₂/100 g" type="number" value={p.yodo} onChange={set("yodo")} />
+                <Field label="Perfil de ácidos grasos" type="textarea" value={p.perfilAG} onChange={set("perfilAG")} placeholder="C16:0 ~12%, C18:1 ~45%, C18:2 ~35%..." />
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setInputs((p) => ({
-                    ...p,
-                    tempOperativa: String(ambientRecommendation.tSugerida),
-                  }));
-                  setTab("control");
-                }}
-                className="self-start sm:self-center inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90"
-              >
-                Aplicar a Control
-              </button>
-            </div>
-          )}
-        </section>
+            </Section>
+          </TabsContent>
 
-        <div className="grid lg:grid-cols-5 gap-6">
-          {/* Form con tabs */}
-          <section className="lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-              <FlaskConical className="h-4 w-4" /> Parámetros de Entrada
-            </h2>
-            <form onSubmit={handleAnalyze} className="space-y-4">
-              <Tabs value={tab} onValueChange={setTab} className="w-full">
-                <TabsList className="grid grid-cols-4 w-full">
-                  <TabsTrigger value="fisica" className="text-xs gap-1">
-                    <Thermometer className="h-3.5 w-3.5" /> Física
-                  </TabsTrigger>
-                  <TabsTrigger value="quimica" className="text-xs gap-1">
-                    <Atom className="h-3.5 w-3.5" /> Química
-                  </TabsTrigger>
-                  <TabsTrigger value="control" className="text-xs gap-1">
-                    <Settings2 className="h-3.5 w-3.5" /> Control
-                  </TabsTrigger>
-                  <TabsTrigger value="optimizacion" className="text-xs gap-1">
-                    <TrendingUp className="h-3.5 w-3.5" /> Optim.
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="fisica" className="space-y-4 mt-4">
-                  <FieldInput icon={<Gauge className="h-4 w-4" />} label="Densidad" unit="kg/m³"
-                    value={inputs.densidad} onChange={handleChange("densidad")}
-                    hint={`Rango ${LIMITS.densidadMin}–${LIMITS.densidadMax}`} />
-                  <FieldInput icon={<Droplets className="h-4 w-4" />} label="Viscosidad cinemática" unit="cSt"
-                    value={inputs.viscosidad} onChange={handleChange("viscosidad")}
-                    hint={`Rango ${LIMITS.viscosidadMin}–${LIMITS.viscosidadMax}`} />
-                  <FieldInput icon={<Droplets className="h-4 w-4" />} label="Contenido de Humedad" unit="%"
-                    value={inputs.humedad} onChange={handleChange("humedad")}
-                    hint={`Crítico ≤ ${LIMITS.humedad}`} />
-
-                  {/* Color de la materia prima */}
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-medium mb-1.5">
-                      <span className="text-foreground">Color del Biodisolvente</span>
-                      <span className="text-muted-foreground font-normal">Aceite base vegetal</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {COLOR_OPTIONS.map((c) => {
-                        const active = inputs.color === c.id;
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => setInputs((p) => ({ ...p, color: c.id }))}
-                            className={`flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs text-left transition-colors ${
-                              active
-                                ? "border-primary bg-primary/10"
-                                : "border-border bg-background hover:bg-accent"
-                            }`}
-                          >
-                            <span
-                              className="h-5 w-5 rounded-full border border-border shrink-0"
-                              style={{ backgroundColor: c.hex }}
-                            />
-                            <span className="leading-tight">{c.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Aspecto visual */}
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-medium mb-1.5">
-                      <span className="text-foreground">Aspecto Visual</span>
-                      <span className="text-muted-foreground font-normal">Inspección directa</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { id: "limpio", label: "Limpio / Transparente" },
-                        { id: "turbio", label: "Turbio / Con Sedimentos" },
-                      ].map((a) => {
-                        const active = inputs.aspecto === a.id;
-                        return (
-                          <button
-                            key={a.id}
-                            type="button"
-                            onClick={() => setInputs((p) => ({ ...p, aspecto: a.id }))}
-                            className={`rounded-md border px-2.5 py-2 text-xs transition-colors ${
-                              active
-                                ? "border-primary bg-primary/10"
-                                : "border-border bg-background hover:bg-accent"
-                            }`}
-                          >
-                            {a.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-muted-foreground italic leading-relaxed">
-                    Nota técnica: un color marrón oscuro suele asociarse a alto contenido de
-                    compuestos polares y oxidación avanzada, lo que reduce la rigidez dieléctrica
-                    y la estabilidad aislante del biodisolvente.
-                  </p>
-                </TabsContent>
-
-                <TabsContent value="quimica" className="space-y-4 mt-4">
-                  <FieldInput icon={<Beaker className="h-4 w-4" />} label="Índice de Acidez" unit="mg KOH/g"
-                    value={inputs.acidez} onChange={handleChange("acidez")}
-                    hint={`Crítico ≤ ${LIMITS.acidez}`} />
-                  <FieldInput icon={<Zap className="h-4 w-4" />} label="Rigidez Dieléctrica" unit="kV"
-                    value={inputs.rigidez} onChange={handleChange("rigidez")}
-                    hint={`Mínimo ≥ ${LIMITS.rigidezMin} (ASTM D877)`} />
-                  <FieldInput icon={<Activity className="h-4 w-4" />} label="Conductividad Eléctrica" unit="pS/m"
-                    value={inputs.conductividad} onChange={handleChange("conductividad")}
-                    hint={`Límite ≤ ${LIMITS.conductividadMax} (IEC 60247)`} />
-                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Punto de Inflamación" unit="°C"
-                    value={inputs.inflamacion} onChange={handleChange("inflamacion")}
-                    hint={`Mínimo ≥ ${LIMITS.inflamacionMin} (ASTM D92)`} />
-                  <FieldInput icon={<FlaskConical className="h-4 w-4" />} label="Estabilidad Oxidativa" unit="h"
-                    value={inputs.oxidacion} onChange={handleChange("oxidacion")}
-                    hint={`Mínimo ≥ ${LIMITS.oxidacionMin} h`} />
-                </TabsContent>
-
-                <TabsContent value="control" className="space-y-4 mt-4">
-                  <FieldInput icon={<Thermometer className="h-4 w-4" />} label="Temperatura Operativa" unit="°C"
-                    value={inputs.tempOperativa} onChange={handleChange("tempOperativa")}
-                    hint={`Rango ${LIMITS.tempOpMin}–${LIMITS.tempOpMax}`} />
-                  <FieldInput icon={<Zap className="h-4 w-4" />} label="Compatibilidad Dieléctrica" unit="%"
-                    value={inputs.compatibilidad} onChange={handleChange("compatibilidad")}
-                    hint={`Mínimo ≥ ${LIMITS.compatibilidadMin}`} />
-                  <FieldInput icon={<Droplets className="h-4 w-4" />} label="Pureza del Biodisolvente" unit="%"
-                    value={inputs.pureza} onChange={handleChange("pureza")}
-                    hint={`Mínimo ≥ ${LIMITS.purezaMin}`} />
-                  <FieldInput icon={<AlertTriangle className="h-4 w-4" />} label="Nivel de Contaminación" unit="ppm"
-                    value={inputs.contaminacion} onChange={handleChange("contaminacion")}
-                    hint={`Límite ≤ ${LIMITS.contaminacionMax}`} />
-                </TabsContent>
-
-                <TabsContent value="optimizacion" className="space-y-3 mt-4">
-                  <DielectricOptimization
-                    parsed={parsed}
-                    numericsValid={numericsValid}
-                    allValid={allValid}
-                    aspectoTurbio={inputs.aspecto === "turbio"}
-                    colorOscuro={inputs.color === "marron"}
-                  />
-                </TabsContent>
-              </Tabs>
-
-              {error && (
-                <div className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="w-full rounded-md bg-primary text-primary-foreground py-2.5 text-sm font-medium hover:bg-primary/90 transition-colors"
-              >
-                Generar Reporte
-              </button>
-            </form>
-          </section>
-
-          {/* Report */}
-          <section className="lg:col-span-3 space-y-6">
-            {!submitted ? (
-              <div className="rounded-xl border border-dashed border-border bg-card/50 p-10 text-center">
-                <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  Completa los parámetros físicos, químicos y de control y presiona <strong>Generar Reporte</strong>.
-                </p>
+          {/* ============ Reactivos ============ */}
+          <TabsContent value="reactivos" className="mt-6 space-y-6">
+            <Section title="2.1 Alcohol" icon={Beaker}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Nombre químico" value={p.alcoholNombre} onChange={set("alcoholNombre")} placeholder="Metanol / Etanol / Isopropanol..." />
+                <Field label="Fórmula química" value={p.alcoholFormula} onChange={set("alcoholFormula")} placeholder="CH₃OH" />
+                <Field label="Pureza" unit="%" type="number" value={p.alcoholPureza} onChange={set("alcoholPureza")} />
+                <Field label="Relación molar aceite:alcohol" value={p.relacionMolar} onChange={set("relacionMolar")} placeholder="1:6" />
+                <Field label="Función dentro del producto final" type="textarea" value={p.funcionAlcohol} onChange={set("funcionAlcohol")} />
               </div>
-            ) : (
-              <>
-                {/* Verdict */}
-                <div
-                  className={`rounded-xl border p-5 ${
-                    viable
-                      ? "border-emerald-500/40 bg-emerald-500/5"
-                      : "border-destructive/50 bg-destructive/5"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {viable ? (
-                      <CheckCircle2 className="h-6 w-6 text-emerald-500 shrink-0" />
-                    ) : (
-                      <AlertTriangle className="h-6 w-6 text-destructive shrink-0" />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold">
-                          {viable ? "Lote VIABLE como Biodisolvente Dieléctrico" : "Lote NO VIABLE"}
-                        </h3>
-                        <StatusBadge level={estadoGlobal} />
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {viable
-                          ? precauciones > 0
-                            ? "Cumple los límites críticos pero presenta condiciones a vigilar."
-                            : "Cumple todos los límites críticos. Apto para uso como aislante líquido."
-                          : "Uno o más parámetros críticos están fuera de tolerancia (humedad, conductividad, rigidez o contaminación)."}
-                      </p>
-                    </div>
+            </Section>
+
+            <Section title="2.2 Catalizador básico (transesterificación)" icon={FlaskConical}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Nombre químico" value={p.catBasicoNombre} onChange={set("catBasicoNombre")} placeholder="NaOH / KOH / CH₃ONa" />
+                <Field label="Concentración" unit="%" value={p.catBasicoConcentracion} onChange={set("catBasicoConcentracion")} />
+                <Field label="Cantidad utilizada" value={p.catBasicoCantidad} onChange={set("catBasicoCantidad")} placeholder="Ej: 1% p/p del aceite" />
+                <Field label="Justificación de selección" type="textarea" value={p.catBasicoJustificacion} onChange={set("catBasicoJustificacion")} />
+              </div>
+            </Section>
+
+            <Section title="2.3 Catalizador ácido (esterificación previa, si aplica)" icon={FlaskConical}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Nombre químico" value={p.catAcidoNombre} onChange={set("catAcidoNombre")} placeholder="H₂SO₄ / HCl / p-TSA" />
+                <Field label="Concentración" unit="%" value={p.catAcidoConcentracion} onChange={set("catAcidoConcentracion")} />
+                <Field label="Cantidad utilizada" value={p.catAcidoCantidad} onChange={set("catAcidoCantidad")} />
+                <Field label="Justificación de selección" type="textarea" value={p.catAcidoJustificacion} onChange={set("catAcidoJustificacion")} />
+              </div>
+            </Section>
+          </TabsContent>
+
+          {/* ============ Proceso ============ */}
+          <TabsContent value="proceso" className="mt-6 space-y-6">
+            <Section title="3.1 Metodología" icon={ClipboardList}>
+              <div className="grid gap-4">
+                <Field label="Caracterización de materia prima" type="textarea" value={p.metCaracterizacion} onChange={set("metCaracterizacion")} />
+                <Field label="Esterificación ácida (si aplica)" type="textarea" value={p.metEsterificacion} onChange={set("metEsterificacion")} />
+                <Field label="Transesterificación" type="textarea" value={p.metTransesterificacion} onChange={set("metTransesterificacion")} />
+                <Field label="Lavado" type="textarea" value={p.metLavado} onChange={set("metLavado")} />
+                <Field label="Secado" type="textarea" value={p.metSecado} onChange={set("metSecado")} />
+                <Field label="Purificación" type="textarea" value={p.metPurificacion} onChange={set("metPurificacion")} />
+                <Field label="Caracterización del producto final" type="textarea" value={p.metProductoFinal} onChange={set("metProductoFinal")} />
+              </div>
+            </Section>
+
+            <Section title="3.2 Condiciones operacionales" icon={Settings2}>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label="Temperatura" unit="°C" type="number" value={p.temperatura} onChange={set("temperatura")} />
+                <Field label="Tiempo de reacción" unit="min" type="number" value={p.tiempoReaccion} onChange={set("tiempoReaccion")} />
+                <Field label="Velocidad de agitación" unit="rpm" type="number" value={p.agitacion} onChange={set("agitacion")} />
+                <Field label="Presión" value={p.presion} onChange={set("presion")} placeholder="atm / kPa" />
+                <Field label="Rendimiento obtenido" unit="%" type="number" value={p.rendimiento} onChange={set("rendimiento")} />
+                <Field label="Conversión estimada" unit="%" type="number" value={p.conversion} onChange={set("conversion")} />
+              </div>
+            </Section>
+          </TabsContent>
+
+          {/* ============ Análisis (FASE 2 + 3) ============ */}
+          <TabsContent value="analisis" className="mt-6 space-y-6">
+            <Section title="FASE 2 — Identificación del éster obtenido" icon={Atom}>
+              <div className="grid gap-3 text-sm">
+                <p><Badge tone="info">{ester.abreviatura}</Badge> <strong>{ester.tipo}</strong></p>
+                <p><strong>Familia:</strong> {ester.familia}</p>
+                <p><strong>Estructura:</strong> {ester.estructura}</p>
+                <p><strong>Mecanismo predominante:</strong> {ester.mecanismo}</p>
+                <p><strong>Influencia del alcohol:</strong> {ester.influenciaAlcohol}</p>
+                <p><strong>Influencia del catalizador:</strong> {ester.influenciaCatalizador}</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <h3 className="mb-1 font-semibold text-emerald-500">Ventajas</h3>
+                    <ul className="list-disc space-y-1 pl-5">{ester.ventajas.map((v) => <li key={v}>{v}</li>)}</ul>
                   </div>
-
-                  {!viable && (
-                    <div className="mt-4 pt-4 border-t border-border space-y-2 text-sm">
-                      <p className="font-medium">Cumplimiento Normativo · ASTM D6871 / IEC 60296</p>
-                      <ul className="list-disc list-inside text-muted-foreground space-y-1">
-                        {criticoAcidez && (
-                          <li>
-                            Acidez {parsed.acidez} &gt; {LIMITS.acidez} mg KOH/g → <strong>Neutralización alcalina</strong> y refinado con tierras activadas.
-                          </li>
-                        )}
-                        {criticoHumedad && (
-                          <li>
-                            Humedad {parsed.humedad}% &gt; {LIMITS.humedad}% → <strong>Deshidratación al vacío</strong> (105°C, &lt;1 kPa) para preservar rigidez dieléctrica.
-                          </li>
-                        )}
-                        {criticoConductividad && (
-                          <li>
-                            Conductividad {parsed.conductividad} &gt; {LIMITS.conductividadMax} pS/m → <strong>Refinado adicional</strong> para reducir compuestos polares conductivos.
-                          </li>
-                        )}
-                        {criticoRigidez && (
-                          <li>
-                            Rigidez {parsed.rigidez} &lt; {LIMITS.rigidezMin} kV → <strong>Reproceso/secado</strong>; lote no apto como aislante.
-                          </li>
-                        )}
-                        {contaminacionAlta && (
-                          <li>
-                            Contaminación {parsed.contaminacion} &gt; {LIMITS.contaminacionMax} ppm → <strong>Filtración fina</strong> y control de fuentes de contaminación.
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                {/* Advertencias automáticas */}
-                {criticoHumedad && (
-                  <AlertCard
-                    level="critico"
-                    title="Riesgo de pérdida de capacidad aislante"
-                    body={`Humedad ${parsed.humedad}% excede el límite (${LIMITS.humedad}%). El agua libre reduce drásticamente la rigidez dieléctrica del biodisolvente.`}
-                  />
-                )}
-                {criticoConductividad && (
-                  <AlertCard
-                    level="critico"
-                    title="Riesgo operativo eléctrico"
-                    body={`Conductividad ${parsed.conductividad} pS/m supera el máximo (${LIMITS.conductividadMax} pS/m). Posibles fugas y calentamiento en servicio.`}
-                  />
-                )}
-                {oxidacionBaja && (
-                  <AlertCard
-                    level="precaucion"
-                    title="Posible degradación del biodisolvente"
-                    body={`Estabilidad oxidativa ${parsed.oxidacion} h por debajo de ${LIMITS.oxidacionMin} h. Vida útil reducida y formación de sedimentos a mediano plazo.`}
-                  />
-                )}
-                {alertaVisual && (
-                  <AlertCard
-                    level="precaucion"
-                    title="Filtración o refinación recomendada"
-                    body={`${inputs.color === "marron" ? "Color oscuro detectado. " : ""}${inputs.aspecto === "turbio" ? "Aspecto turbio o con sedimentos. " : ""}Realizar filtración fina y/o refinación con tierras activadas antes de uso.`}
-                  />
-                )}
-
-                {tempFueraRango && (
-                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-semibold">Estabilidad Térmica Comprometida</p>
-                      <p className="text-muted-foreground mt-1">
-                        Temperatura {parsed.tempOperativa}°C fuera del rango operativo seguro ({LIMITS.tempOpMin}–{LIMITS.tempOpMax}°C).
-                        Ajustar para preservar el desempeño aislante y la seguridad industrial.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {alertaVisual && (
-                  <AlertCard
-                    level="precaucion"
-                    title="Pre-tratamiento sugerido por inspección visual"
-                    body="El color oscuro está asociado a compuestos polares y oxidación que reducen la rigidez dieléctrica."
-                  />
-                )}
-
-                {/* Reporte agrupado */}
-                <div className="rounded-xl border border-border bg-card p-5 space-y-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Reporte Final por Categoría
-                  </h3>
-
-                  <ReportGroup title="Caracterización Física" icon={<Thermometer className="h-4 w-4" />}>
-                    <ReportRow label="Densidad" value={`${parsed.densidad} kg/m³`}
-                      ok={parsed.densidad >= LIMITS.densidadMin && parsed.densidad <= LIMITS.densidadMax} />
-                    <ReportRow label="Viscosidad cinemática" value={`${parsed.viscosidad} cSt`}
-                      ok={parsed.viscosidad >= LIMITS.viscosidadMin && parsed.viscosidad <= LIMITS.viscosidadMax} />
-                    <ReportRow label="Humedad" value={`${parsed.humedad} %`} ok={!criticoHumedad} critical />
-                    <div className="flex items-center justify-between px-3 py-2 text-sm">
-                      <span className="text-muted-foreground">Color materia prima</span>
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="h-4 w-4 rounded-full border border-border shrink-0"
-                          style={{ backgroundColor: colorObj?.hex ?? "transparent" }}
-                          aria-label={colorObj?.label}
-                        />
-                        <span className="font-mono text-xs">{colorObj?.label ?? "—"}</span>
-                        {colorObj?.warn ? (
-                          <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        ) : (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                        )}
-                      </span>
-                    </div>
-                    <ReportRow
-                      label="Aspecto visual"
-                      value={inputs.aspecto === "limpio" ? "Limpio / Transparente" : "Turbio / Sedimentos"}
-                      ok={inputs.aspecto === "limpio"}
-                    />
-                  </ReportGroup>
-
-                  <ReportGroup title="Caracterización Química" icon={<Atom className="h-4 w-4" />}>
-                    <ReportRow label="Índice de Acidez" value={`${parsed.acidez} mg KOH/g`} ok={!criticoAcidez} critical />
-                    <ReportRow label="Rigidez Dieléctrica" value={`${parsed.rigidez} kV`}
-                      ok={parsed.rigidez >= LIMITS.rigidezMin} critical />
-                    <ReportRow label="Conductividad Eléctrica" value={`${parsed.conductividad} pS/m`}
-                      ok={parsed.conductividad <= LIMITS.conductividadMax} />
-                    <ReportRow label="Punto de Inflamación" value={`${parsed.inflamacion} °C`}
-                      ok={parsed.inflamacion >= LIMITS.inflamacionMin} />
-                    <ReportRow label="Estabilidad Oxidativa" value={`${parsed.oxidacion} h`}
-                      ok={parsed.oxidacion >= LIMITS.oxidacionMin} />
-                  </ReportGroup>
-
-                  <ReportGroup title="Variables de Control Operativo" icon={<Settings2 className="h-4 w-4" />}>
-                    <ReportRow label="Temperatura Operativa" value={`${parsed.tempOperativa} °C`} ok={!tempFueraRango} />
-                    <ReportRow label="Compatibilidad Dieléctrica" value={`${parsed.compatibilidad} %`}
-                      ok={parsed.compatibilidad >= LIMITS.compatibilidadMin} />
-                    <ReportRow label="Pureza del Biodisolvente" value={`${parsed.pureza} %`}
-                      ok={parsed.pureza >= LIMITS.purezaMin} />
-                    <ReportRow label="Nivel de Contaminación" value={`${parsed.contaminacion} ppm`}
-                      ok={!contaminacionAlta} critical />
-                  </ReportGroup>
-                </div>
-
-                {/* Chart */}
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Indicadores Dieléctricos · Valor vs. Óptimo
-                  </h3>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={12} domain={[0, 100]} />
-                        <Tooltip contentStyle={{
-                          backgroundColor: "var(--card)",
-                          border: "1px solid var(--border)",
-                          borderRadius: 8,
-                          fontSize: 12,
-                        }} />
-                        <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="Valor" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Óptimo" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div>
+                    <h3 className="mb-1 font-semibold text-amber-500">Limitaciones</h3>
+                    <ul className="list-disc space-y-1 pl-5">{ester.limitaciones.map((v) => <li key={v}>{v}</li>)}</ul>
                   </div>
                 </div>
+              </div>
+            </Section>
 
-                {/* Indicadores Dieléctricos */}
-                <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                    Indicadores Dieléctricos en Tiempo Real
-                  </h3>
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {dielectricMetrics.map((m) => {
-                      const score = m.invert ? 100 - m.Valor : m.Valor;
-                      const lvl: "optimo" | "precaucion" | "critico" =
-                        score >= 80 ? "optimo" : score >= 55 ? "precaucion" : "critico";
-                      const tone = lvl === "optimo" ? "ok" : lvl === "precaucion" ? "warn" : "danger";
-                      return (
-                        <div key={m.name} className="rounded-lg border border-border bg-background p-3">
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                              {m.name}
-                            </p>
-                            <StatusBadge level={lvl} />
-                          </div>
-                          <p className="font-mono text-2xl font-bold">{m.Valor}<span className="text-xs text-muted-foreground ml-1">%</span></p>
-                          <div className="mt-2">
-                            <ProgressBar label="" value={score} tone={tone} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+            <Section title="FASE 3 — Caracterización técnica estimada" icon={Factory}>
+              <div className="grid gap-6 md:grid-cols-2">
+                <div>
+                  <h3 className="mb-2 font-semibold">Propiedades físicas</h3>
+                  <table className="w-full text-xs">
+                    <thead><tr className="text-left text-muted-foreground"><th className="py-1">Propiedad</th><th>Valor</th><th>Método</th></tr></thead>
+                    <tbody>{carac.fisicas.map((f) => (
+                      <tr key={f.propiedad} className="border-t border-border">
+                        <td className="py-1 pr-2">{f.propiedad}</td><td className="pr-2">{f.valor}</td><td className="text-muted-foreground">{f.metodo}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
                 </div>
+                <div>
+                  <h3 className="mb-2 font-semibold">Propiedades químicas</h3>
+                  <table className="w-full text-xs">
+                    <thead><tr className="text-left text-muted-foreground"><th className="py-1">Propiedad</th><th>Valor</th><th>Método</th></tr></thead>
+                    <tbody>{carac.quimicas.map((q) => (
+                      <tr key={q.propiedad} className="border-t border-border">
+                        <td className="py-1 pr-2">{q.propiedad}</td><td className="pr-2">{q.valor}</td><td className="text-muted-foreground">{q.metodo}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="mt-6 h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart data={dataRadar}>
+                    <PolarGrid />
+                    <PolarAngleAxis dataKey="eje" />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                    <Radar name="Perfil técnico" dataKey="v" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
+                    <Tooltip />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </Section>
+          </TabsContent>
 
-                <button
-                  onClick={handleDownload}
-                  className="w-full rounded-md bg-primary text-primary-foreground py-3 text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Descargar Reporte (PDF)
-                </button>
-              </>
-            )}
-          </section>
-        </div>
+          {/* ============ Comparación (FASE 4) ============ */}
+          <TabsContent value="comparacion" className="mt-6 space-y-6">
+            <Section title="FASE 4 — Comparación contra biodiésel convencional (FAME-NaOH)" icon={TrendingUp}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-left text-muted-foreground">
+                    <tr>
+                      <th className="py-2 pr-2">Propiedad</th>
+                      <th className="pr-2">Producto</th>
+                      <th className="pr-2">Biodiésel</th>
+                      <th className="pr-2">Juicio</th>
+                      <th>Motivo técnico</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparativa.map((c) => (
+                      <tr key={c.propiedad} className="border-t border-border align-top">
+                        <td className="py-1.5 pr-2 font-medium">{c.propiedad}</td>
+                        <td className="pr-2">{c.productoValor}</td>
+                        <td className="pr-2">{c.biodieselValor}</td>
+                        <td className="pr-2">
+                          <Badge tone={c.juicio === "Mejor" ? "ok" : c.juicio === "Similar" ? "info" : "bad"}>{c.juicio}</Badge>
+                        </td>
+                        <td className="text-muted-foreground">{c.motivo}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dataComparacion}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="propiedad" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={70} />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="score" name="Desempeño vs biodiésel" fill="hsl(var(--primary))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Section>
+          </TabsContent>
 
-        <footer className="text-center text-xs text-muted-foreground pt-6 pb-2 border-t border-border">
-          QC Biodisolvente Dieléctrico · ASTM D6871 · IEC 60296 · ASTM D877
-        </footer>
+          {/* ============ Mercado (FASE 5) ============ */}
+          <TabsContent value="mercado" className="mt-6 space-y-6">
+            <Section title="FASE 5 — Identificación de oportunidades de mercado" icon={Target}>
+              <div className="grid gap-3 md:grid-cols-2">
+                {nichos.map((n) => (
+                  <div key={n.nombre} className="rounded-lg border border-border p-3 text-sm">
+                    <div className="mb-1 flex items-center justify-between">
+                      <h3 className="font-semibold">{n.nombre}</h3>
+                      <Badge tone={n.potencial === "Alto" ? "ok" : n.potencial === "Medio" ? "warn" : "bad"}>
+                        {n.potencial} · {n.score}/100
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">{n.justificacion}</p>
+                    <p className="mt-1"><strong className="text-emerald-500">Ventajas:</strong> {n.ventajas}</p>
+                    <p><strong className="text-amber-500">Limitaciones:</strong> {n.limitaciones}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dataNichos}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="nombre" tick={{ fontSize: 10 }} interval={0} />
+                    <YAxis domain={[0, 100]} />
+                    <Tooltip />
+                    <Bar dataKey="score" name="Score de mercado" fill="hsl(var(--primary))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 rounded-lg border border-primary/40 bg-primary/10 p-4 text-sm">
+                <h3 className="mb-1 font-semibold text-primary">Nicho recomendado: {recomendado.nombre}</h3>
+                <p>{recomendado.justificacion}</p>
+                <p className="mt-1"><strong>Por qué es la mejor alternativa:</strong> combina el potencial técnico del producto con las ventajas competitivas frente al biodiésel convencional, ofreciendo mayor margen y diferenciación en el mercado oleoquímico.</p>
+              </div>
+            </Section>
+          </TabsContent>
+
+          {/* ============ Informe (FASE 6) ============ */}
+          <TabsContent value="informe" className="mt-6 space-y-6">
+            <Section title="FASE 6 — Generación del informe técnico" icon={FileText}>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Genera un informe profesional estructurado (resumen ejecutivo, introducción, objetivos, metodología,
+                fundamento químico, caracterización, comparación con biodiésel, ventajas/desventajas, nichos de mercado,
+                propuesta comercial, conclusiones, recomendaciones y referencias) basado en todas las variables ingresadas.
+              </p>
+              <button
+                onClick={generarPDF}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <Download className="h-4 w-4" /> Descargar informe PDF
+              </button>
+            </Section>
+          </TabsContent>
+        </Tabs>
       </main>
-    </div>
-  );
-}
-
-function StatCard({
-  icon, label, value, tone,
-}: { icon: React.ReactNode; label: string; value: string; tone: "ok" | "danger" | "muted" }) {
-  const toneCls =
-    tone === "ok" ? "text-emerald-500" : tone === "danger" ? "text-destructive" : "text-muted-foreground";
-  return (
-    <div className="rounded-lg border border-border bg-card p-3">
-      <div className={`flex items-center gap-2 text-xs ${toneCls}`}>
-        {icon}
-        <span className="uppercase tracking-wider">{label}</span>
-      </div>
-      <p className="mt-1 text-base font-semibold truncate">{value}</p>
-    </div>
-  );
-}
-
-function FieldInput({
-  icon, label, unit, value, onChange, hint,
-}: {
-  icon: React.ReactNode; label: string; unit: string; value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; hint: string;
-}) {
-  return (
-    <div>
-      <label className="flex items-center justify-between text-xs font-medium mb-1.5">
-        <span className="flex items-center gap-1.5 text-foreground">{icon}{label}</span>
-        <span className="text-muted-foreground font-normal">{hint}</span>
-      </label>
-      <div className="relative">
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          value={value}
-          onChange={onChange}
-          placeholder="0.00"
-          className="w-full rounded-md border border-input bg-background px-3 py-2 pr-16 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{unit}</span>
-      </div>
-    </div>
-  );
-}
-
-function MetricBox({ label, value, sub }: { label: string; value: string; sub: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-4">
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
-      <p className="text-2xl font-bold mt-1 font-mono">{value}</p>
-      <p className="text-xs text-muted-foreground mt-1">{sub}</p>
-    </div>
-  );
-}
-
-function ReportGroup({
-  title, icon, children,
-}: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div>
-      <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
-        {icon}{title}
-      </h4>
-      <div className="rounded-lg border border-border divide-y divide-border">{children}</div>
-    </div>
-  );
-}
-
-function ReportRow({
-  label, value, ok, critical,
-}: { label: string; value: string; ok: boolean; critical?: boolean }) {
-  return (
-    <div className="flex items-center justify-between px-3 py-2 text-sm">
-      <span className="text-muted-foreground">
-        {label}{critical && <span className="ml-1 text-[10px] uppercase text-destructive">crítico</span>}
-      </span>
-      <span className="flex items-center gap-2 font-mono">
-        {value}
-        {ok ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-        ) : (
-          <AlertTriangle className={`h-4 w-4 ${critical ? "text-destructive" : "text-amber-500"}`} />
-        )}
-      </span>
-    </div>
-  );
-}
-
-function OptRow({ label, target, actual }: { label: string; target: string; actual: string }) {
-  return (
-    <div className="rounded border border-border bg-card px-2 py-1.5">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <div className="flex items-baseline justify-between gap-2 mt-0.5">
-        <span className="font-mono text-[11px] text-primary">{target}</span>
-        <span className="font-mono text-[11px] text-foreground">{actual}</span>
-      </div>
-    </div>
-  );
-}
-
-function ProgressBar({ label, value, tone }: { label: string; value: number; tone: "ok" | "warn" | "danger" }) {
-  const v = Math.max(0, Math.min(100, value));
-  const color =
-    tone === "ok" ? "bg-emerald-500" : tone === "warn" ? "bg-amber-500" : "bg-destructive";
-  return (
-    <div>
-      <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
-        <span className="uppercase tracking-wider">{label}</span>
-        <span className="font-mono">{v.toFixed(0)}%</span>
-      </div>
-      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-        <div className={`h-full ${color} transition-all`} style={{ width: `${v}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ level }: { level: "optimo" | "precaucion" | "critico" }) {
-  const map = {
-    optimo: { label: "Óptimo", cls: "border-emerald-500/40 bg-emerald-500/10 text-emerald-500" },
-    precaucion: { label: "Precaución", cls: "border-amber-500/40 bg-amber-500/10 text-amber-500" },
-    critico: { label: "Crítico", cls: "border-destructive/50 bg-destructive/10 text-destructive" },
-  } as const;
-  const m = map[level];
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold uppercase tracking-wider ${m.cls}`}>
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {m.label}
-    </span>
-  );
-}
-
-function AlertCard({
-  level, title, body,
-}: { level: "optimo" | "precaucion" | "critico"; title: string; body: string }) {
-  const cls =
-    level === "critico"
-      ? "border-destructive/50 bg-destructive/5 text-destructive"
-      : level === "precaucion"
-        ? "border-amber-500/40 bg-amber-500/5 text-amber-600 dark:text-amber-400"
-        : "border-emerald-500/40 bg-emerald-500/5 text-emerald-500";
-  return (
-    <div className={`rounded-xl border p-4 flex items-start gap-3 ${cls}`}>
-      <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-      <div className="text-sm flex-1">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <p className="font-semibold text-foreground">{title}</p>
-          <StatusBadge level={level} />
-        </div>
-        <p className="text-muted-foreground mt-1">{body}</p>
-      </div>
-    </div>
-  );
-}
-
-function clamp(v: number, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, v));
-}
-
-function DielectricOptimization({
-  parsed,
-  numericsValid,
-  allValid,
-  aspectoTurbio,
-  colorOscuro,
-}: {
-  parsed: Record<string, number>;
-  numericsValid: boolean;
-  allValid: boolean;
-  aspectoTurbio: boolean;
-  colorOscuro: boolean;
-}) {
-  if (!numericsValid) {
-    return (
-      <div className="rounded-md border border-dashed border-border bg-background p-6 text-center text-xs text-muted-foreground">
-        Ingresa los parámetros físicos, químicos y de control para calcular en tiempo real
-        la optimización dieléctrica del biodisolvente.
-      </div>
-    );
-  }
-
-  const { humedad, viscosidad, rigidez, conductividad, oxidacion, tempOperativa } = parsed;
-
-  // ===== Indicadores 0–100 =====
-  // Eficiencia dieléctrica: depende de rigidez (≥30 kV) y conductividad (≤50 pS/m)
-  const idxRigidez = clamp((rigidez / LIMITS.rigidezMin) * 80);
-  const idxConduct = clamp(100 - (conductividad / LIMITS.conductividadMax) * 80);
-  const eficienciaDielectrica = clamp(idxRigidez * 0.6 + idxConduct * 0.4);
-
-  // Estabilidad térmica: cercanía al centro del rango y oxidación
-  const tMid = (LIMITS.tempOpMin + LIMITS.tempOpMax) / 2;
-  const tSpan = (LIMITS.tempOpMax - LIMITS.tempOpMin) / 2;
-  const idxTemp = clamp(100 - (Math.abs(tempOperativa - tMid) / tSpan) * 100);
-  const idxOxid = clamp((oxidacion / LIMITS.oxidacionMin) * 90);
-  const estabilidadTermica = clamp(idxTemp * 0.55 + idxOxid * 0.45);
-
-  // Capacidad aislante: rigidez, humedad inversa, viscosidad en rango
-  const idxHumedad = clamp(100 - (humedad / LIMITS.humedad) * 100);
-  const viscOk =
-    viscosidad >= LIMITS.viscosidadMin && viscosidad <= LIMITS.viscosidadMax ? 100 : 60;
-  const capacidadAislante = clamp(idxRigidez * 0.5 + idxHumedad * 0.35 + viscOk * 0.15);
-
-  // Riesgo de degradación (mayor = peor): humedad, oxidación baja, aspecto/color
-  const riesgoDegradacion = clamp(
-    (humedad / LIMITS.humedad) * 35 +
-      Math.max(0, (LIMITS.oxidacionMin - oxidacion) / LIMITS.oxidacionMin) * 35 +
-      (aspectoTurbio ? 15 : 0) +
-      (colorOscuro ? 15 : 0),
-  );
-
-  // Desempeño operativo: promedio ponderado − penalización por riesgo
-  const desempenoOperativo = clamp(
-    eficienciaDielectrica * 0.35 +
-      estabilidadTermica * 0.25 +
-      capacidadAislante * 0.3 +
-      (100 - riesgoDegradacion) * 0.1,
-  );
-
-  const indicadores = [
-    { key: "Eficiencia dieléctrica", value: eficienciaDielectrica, unit: "%", invert: false },
-    { key: "Estabilidad térmica", value: estabilidadTermica, unit: "%", invert: false },
-    { key: "Capacidad aislante", value: capacidadAislante, unit: "%", invert: false },
-    { key: "Riesgo de degradación", value: riesgoDegradacion, unit: "%", invert: true },
-    { key: "Desempeño operativo", value: desempenoOperativo, unit: "%", invert: false },
-  ];
-
-  const levelOf = (value: number, invert: boolean): "optimo" | "precaucion" | "critico" => {
-    const v = invert ? 100 - value : value;
-    if (v >= 80) return "optimo";
-    if (v >= 55) return "precaucion";
-    return "critico";
-  };
-
-  const estadoTecnico = levelOf(desempenoOperativo, false);
-
-  const barData = indicadores.map((i) => ({
-    name: i.key.replace(" dieléctrica", "").replace(" de degradación", ""),
-    Valor: Math.round(i.value),
-    Óptimo: i.invert ? 20 : 80,
-  }));
-
-  return (
-    <div className="space-y-3">
-      {/* Encabezado de estado técnico */}
-      <div className="rounded-md border border-border bg-background p-3">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
-              <Gauge className="h-3.5 w-3.5" /> Estado técnico del biodisolvente
-            </h4>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Cálculo automático en tiempo real a partir de humedad, viscosidad, rigidez,
-              conductividad, estabilidad oxidativa y temperatura operativa.
-            </p>
-          </div>
-          <StatusBadge level={estadoTecnico} />
-        </div>
-        <div className="mt-3">
-          <ProgressBar
-            label="Desempeño operativo esperado"
-            value={desempenoOperativo}
-            tone={estadoTecnico === "optimo" ? "ok" : estadoTecnico === "precaucion" ? "warn" : "danger"}
-          />
-        </div>
-      </div>
-
-      {/* Indicadores industriales */}
-      <div className="rounded-md border border-border bg-background p-3 space-y-2">
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
-          <TrendingUp className="h-3.5 w-3.5" /> Indicadores industriales
-        </h4>
-        <div className="grid grid-cols-2 gap-2">
-          {indicadores.map((i) => {
-            const lvl = levelOf(i.value, i.invert);
-            return (
-              <div key={i.key} className="rounded border border-border bg-card px-2.5 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {i.key}
-                  </p>
-                  <StatusBadge level={lvl} />
-                </div>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="font-mono text-lg font-semibold text-foreground">
-                    {i.value.toFixed(0)}
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">{i.unit}</span>
-                </div>
-                <ProgressBar
-                  label=""
-                  value={i.invert ? 100 - i.value : i.value}
-                  tone={lvl === "optimo" ? "ok" : lvl === "precaucion" ? "warn" : "danger"}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Gráfica dinámica */}
-      <div className="rounded-md border border-border bg-background p-3">
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
-          <TrendingUp className="h-3.5 w-3.5" /> Comparativa de indicadores
-        </h4>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barData} margin={{ top: 5, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} />
-              <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
-              <Tooltip
-                contentStyle={{
-                  background: "hsl(var(--background))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: 6,
-                  fontSize: 11,
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Valor" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Óptimo" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Nivel de riesgo */}
-      <div className="rounded-md border border-border bg-background p-3 space-y-2">
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground">
-          <AlertTriangle className="h-3.5 w-3.5" /> Niveles de riesgo
-        </h4>
-        {humedad > LIMITS.humedad && (
-          <AlertCard level="critico" title="Humedad excesiva" body="Riesgo de pérdida de capacidad aislante." />
-        )}
-        {conductividad > LIMITS.conductividadMax && (
-          <AlertCard level="critico" title="Conductividad elevada" body="Riesgo operativo eléctrico inminente." />
-        )}
-        {rigidez < LIMITS.rigidezMin && (
-          <AlertCard level="critico" title="Rigidez dieléctrica baja" body="No alcanza el mínimo ASTM D877 (≥ 30 kV)." />
-        )}
-        {oxidacion < LIMITS.oxidacionMin && (
-          <AlertCard level="precaucion" title="Estabilidad oxidativa baja" body="Posible degradación del biodisolvente." />
-        )}
-        {(tempOperativa < LIMITS.tempOpMin || tempOperativa > LIMITS.tempOpMax) && (
-          <AlertCard level="precaucion" title="Temperatura fuera de rango" body={`Operar entre ${LIMITS.tempOpMin}–${LIMITS.tempOpMax} °C para preservar la estabilidad térmica.`} />
-        )}
-        {humedad <= LIMITS.humedad &&
-          conductividad <= LIMITS.conductividadMax &&
-          rigidez >= LIMITS.rigidezMin &&
-          oxidacion >= LIMITS.oxidacionMin &&
-          tempOperativa >= LIMITS.tempOpMin &&
-          tempOperativa <= LIMITS.tempOpMax && (
-            <AlertCard level="optimo" title="Sin riesgos detectados" body="Todos los parámetros se encuentran dentro de los rangos óptimos de operación." />
-          )}
-      </div>
-
-      {/* Eficiencia operativa textual */}
-      <div className="rounded-md border border-border bg-background p-3">
-        <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-foreground mb-2">
-          <Zap className="h-3.5 w-3.5" /> Eficiencia operativa
-        </h4>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Eficiencia dieléctrica estimada{" "}
-          <span className="font-mono text-foreground">{eficienciaDielectrica.toFixed(0)}%</span>,
-          estabilidad térmica{" "}
-          <span className="font-mono text-foreground">{estabilidadTermica.toFixed(0)}%</span>,
-          capacidad aislante{" "}
-          <span className="font-mono text-foreground">{capacidadAislante.toFixed(0)}%</span>.
-          Riesgo de degradación{" "}
-          <span className="font-mono text-foreground">{riesgoDegradacion.toFixed(0)}%</span>.
-          {allValid ? "" : " Completa todos los parámetros para una evaluación normativa completa."}
-        </p>
-      </div>
     </div>
   );
 }
