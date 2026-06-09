@@ -286,4 +286,225 @@ function estimarCaracterizacion(p: Proyecto, e: EsterInfo): Caracterizacion {
       { propiedad: "Punto de fluidez", valor: "-10 a +6 °C", metodo: "ASTM D97" },
       { propiedad: "Conductividad eléctrica", valor: "<100 pS/m (alta resistividad)", metodo: "ASTM D2624" },
       { propiedad: "Solubilidad", valor: "Miscible en hidrocarburos, alcoholes; insoluble en agua", metodo: "Cualitativa" },
-      { propiedad: "Volatilidad", valor: "Baja (presión de vapor <0.1 kPa @20 °C)", metodo: "
+      { propiedad: "Volatilidad", valor: "Baja (presión de vapor <0.1 kPa @20 °C)", metodo: "ASTM D2879" },
+      { propiedad: "Poder calorífico", valor: calor, metodo: "ASTM D240" },
+    ],
+    quimicas: [
+      { propiedad: "Estabilidad oxidativa (Rancimat)", valor: "3–10 h @110 °C (mejorable con antioxidantes)", metodo: "EN 14112" },
+      { propiedad: "Polaridad", valor: "Polaridad intermedia (logP 7–10)", metodo: "Estimación QSPR" },
+      { propiedad: "Índice de acidez", valor: "<0.5 mg KOH/g (producto purificado)", metodo: "EN 14104" },
+      { propiedad: "Compatibilidad con materiales", valor: "Acero inoxidable y aluminio: alta. Cobre/zinc: media. Elastómeros NBR: baja", metodo: "ASTM D471" },
+      { propiedad: "Poder solvente (KB)", valor: "55–75 (similar a solventes oxigenados verdes)", metodo: "ASTM D1133" },
+      { propiedad: "Reactividad química", valor: "Susceptible a hidrólisis básica y oxidación por radicales libres", metodo: "Cinética química" },
+      { propiedad: "Biodegradabilidad", valor: ">90% en 28 días", metodo: "OECD 301B" },
+      { propiedad: "Toxicidad potencial", valor: "Baja (LD50 oral rata >5000 mg/kg)", metodo: "OECD 423" },
+      { propiedad: "Contenido energético estimado", valor: calor, metodo: "Bomba calorimétrica" },
+    ],
+  };
+  // Referencia al éster para silenciar warning de variable no usada.
+  void e;
+}
+
+// ====================================================================
+// FASE 4 — Comparación contra biodiésel convencional (FAME NaOH)
+// ====================================================================
+
+type Comparativo = {
+  propiedad: string;
+  productoValor: string;
+  biodieselValor: string;
+  juicio: "Mejor" | "Similar" | "Inferior";
+  motivo: string;
+};
+
+function compararContraBiodiesel(p: Proyecto): Comparativo[] {
+  const { key } = normalizeAlcohol(p.alcoholNombre);
+  const esMetilico = key === "metanol";
+  const esEtilico = key === "etanol";
+  const esLargo = ["isopropanol", "propanol", "butanol"].includes(key);
+
+  const mejorOSim: "Mejor" | "Similar" | "Inferior" = esLargo ? "Mejor" : esEtilico ? "Similar" : "Similar";
+
+  return [
+    {
+      propiedad: "Conductividad eléctrica",
+      productoValor: "<100 pS/m",
+      biodieselValor: "<200 pS/m",
+      juicio: esMetilico ? "Similar" : "Mejor",
+      motivo: "Las cadenas alquílicas más largas reducen la movilidad iónica y aumentan la resistividad del fluido.",
+    },
+    {
+      propiedad: "Densidad",
+      productoValor: esLargo ? "865–880 kg/m³" : "870–890 kg/m³",
+      biodieselValor: "880 kg/m³",
+      juicio: "Similar",
+      motivo: "Diferencias menores al 2% por la longitud del grupo alquilo.",
+    },
+    {
+      propiedad: "Viscosidad",
+      productoValor: esLargo ? "4.5–6.5 cSt" : "3.5–5.5 cSt",
+      biodieselValor: "4.0–5.0 cSt",
+      juicio: esLargo ? "Similar" : "Similar",
+      motivo: "Aumenta linealmente con la longitud de cadena del alcohol.",
+    },
+    {
+      propiedad: "Poder calorífico",
+      productoValor: esLargo ? "39–42 MJ/kg" : "37–40 MJ/kg",
+      biodieselValor: "37–40 MJ/kg",
+      juicio: esLargo ? "Mejor" : "Similar",
+      motivo: "Mayor proporción de carbonos no oxigenados eleva la entalpía de combustión.",
+    },
+    {
+      propiedad: "Estabilidad oxidativa",
+      productoValor: "3–10 h",
+      biodieselValor: "6 h (mínimo EN 14112)",
+      juicio: esLargo ? "Mejor" : "Similar",
+      motivo: "Ramificaciones y cadenas largas reducen sitios susceptibles a peroxidación.",
+    },
+    {
+      propiedad: "Solvencia (KB)",
+      productoValor: esLargo ? "65–80" : "55–70",
+      biodieselValor: "55–60",
+      juicio: "Mejor",
+      motivo: "Mayor polaridad y momento dipolar incrementan el poder solvente frente a residuos orgánicos.",
+    },
+    {
+      propiedad: "Biodegradabilidad",
+      productoValor: ">90% / 28 d",
+      biodieselValor: ">90% / 28 d",
+      juicio: "Similar",
+      motivo: "Ambos pertenecen a la familia de ésteres grasos fácilmente metabolizables.",
+    },
+    {
+      propiedad: "Toxicidad",
+      productoValor: "Muy baja",
+      biodieselValor: "Baja",
+      juicio: mejorOSim,
+      motivo: "Ésteres etílicos/superiores eliminan la trazabilidad del metanol residual.",
+    },
+    {
+      propiedad: "Compatibilidad con motores",
+      productoValor: esMetilico ? "Alta (B7–B20)" : "Media-Alta",
+      biodieselValor: "Alta (B7–B20)",
+      juicio: esMetilico ? "Similar" : "Inferior",
+      motivo: "Especificaciones EN 14214 / ASTM D6751 están diseñadas para FAME.",
+    },
+    {
+      propiedad: "Compatibilidad con materiales",
+      productoValor: "Acero, Al: Alta",
+      biodieselValor: "Acero, Al: Alta",
+      juicio: "Similar",
+      motivo: "Compatibilidad similar con metales; ambos atacan elastómeros NBR.",
+    },
+    {
+      propiedad: "Facilidad de producción",
+      productoValor: esMetilico ? "Alta" : "Media",
+      biodieselValor: "Alta",
+      juicio: esMetilico ? "Similar" : "Inferior",
+      motivo: "Cinética y separación de fases más lentas con alcoholes superiores al metanol.",
+    },
+    {
+      propiedad: "Costo potencial",
+      productoValor: esMetilico ? "Bajo" : "Medio",
+      biodieselValor: "Bajo",
+      juicio: esMetilico ? "Similar" : "Inferior",
+      motivo: "Alcoholes superiores tienen mayor costo que el metanol fósil.",
+    },
+    {
+      propiedad: "Valor agregado",
+      productoValor: esLargo ? "Alto (solvente/lubricante verde)" : esEtilico ? "Alto (100% renovable)" : "Medio",
+      biodieselValor: "Medio (combustible)",
+      juicio: esMetilico ? "Similar" : "Mejor",
+      motivo: "Diversificación hacia nichos no combustibles con mayor margen.",
+    },
+  ];
+}
+
+// ====================================================================
+// FASE 5 — Nichos de mercado
+// ====================================================================
+
+type Nicho = {
+  nombre: string;
+  justificacion: string;
+  ventajas: string;
+  limitaciones: string;
+  potencial: "Alto" | "Medio" | "Bajo";
+  score: number;
+};
+
+function evaluarNichos(p: Proyecto): { nichos: Nicho[]; recomendado: Nicho } {
+  const { key } = normalizeAlcohol(p.alcoholNombre);
+  const esLargo = ["isopropanol", "propanol", "butanol"].includes(key);
+  const esEtilico = key === "etanol";
+  const esMetilico = key === "metanol";
+
+  const base: Nicho[] = [
+    {
+      nombre: "Biocombustibles (B7–B100)",
+      justificacion: "Cumple parámetros generales de FAME/FAEE; reemplazo parcial del diésel fósil.",
+      ventajas: "Mercado consolidado, marco normativo claro (EN 14214 / ASTM D6751).",
+      limitaciones: "Margen ajustado y competencia con biodiésel industrial.",
+      potencial: esMetilico ? "Alto" : "Medio",
+      score: esMetilico ? 85 : 65,
+    },
+    {
+      nombre: "Solventes industriales verdes",
+      justificacion: "Polaridad intermedia y alto KB permiten reemplazar xileno, MEK y solventes clorados.",
+      ventajas: "Baja toxicidad, biodegradable, bajo COV.",
+      limitaciones: "Volatilidad menor que solventes tradicionales (secado más lento).",
+      potencial: esLargo ? "Alto" : "Medio",
+      score: esLargo ? 90 : 70,
+    },
+    {
+      nombre: "Desengrasantes y limpieza industrial",
+      justificacion: "Excelente afinidad por grasas y aceites, fácil enjuague con tensoactivos.",
+      ventajas: "Reemplaza solventes derivados del petróleo en talleres y plantas alimenticias.",
+      limitaciones: "Requiere formulación con coadyuvantes para optimizar el desempeño.",
+      potencial: "Alto",
+      score: 88,
+    },
+    {
+      nombre: "Lubricantes biodegradables",
+      justificacion: "Lubricidad intrínseca elevada (HFRR <460 µm) y baja toxicidad ambiental.",
+      ventajas: "Aplicable a maquinaria agrícola, forestal y marina.",
+      limitaciones: "Estabilidad oxidativa limitada; requiere antioxidantes.",
+      potencial: esLargo ? "Alto" : "Medio",
+      score: esLargo ? 87 : 72,
+    },
+    {
+      nombre: "Fluidos hidráulicos biodegradables",
+      justificacion: "Viscosidad y punto de inflamación adecuados para sistemas hidráulicos HEES.",
+      ventajas: "Cumple ISO 15380 (HEES) con paquete de aditivos.",
+      limitaciones: "Sensible a contaminación con agua.",
+      potencial: esLargo ? "Alto" : "Medio",
+      score: esLargo ? 82 : 65,
+    },
+    {
+      nombre: "Aditivos químicos y plastificantes",
+      justificacion: "Compatibilidad con polímeros PVC y mejoras de fluidez en formulaciones.",
+      ventajas: "Reemplazo de ftalatos en aplicaciones no críticas.",
+      limitaciones: "Migración polimérica a controlar.",
+      potencial: "Medio",
+      score: 65,
+    },
+    {
+      nombre: "Cosmética e higiene personal",
+      justificacion: "Ésteres grasos similares a emolientes comerciales (palmitato de isopropilo).",
+      ventajas: "Sensorialidad agradable, no comedogénico, biodegradable.",
+      limitaciones: "Requiere refinación adicional (color, olor) y grado cosmético.",
+      potencial: key === "isopropanol" ? "Alto" : "Medio",
+      score: key === "isopropanol" ? 86 : 60,
+    },
+    {
+      nombre: "Farmacéutica (excipientes)",
+      justificacion: "Vehículo lipofílico para formulaciones tópicas y veterinarias.",
+      ventajas: "Baja toxicidad y compatibilidad con principios activos liposolubles.",
+      limitaciones: "Exige certificaciones GMP y pureza farmacopea.",
+      potencial: "Medio",
+      score: 55,
+    },
+    {
+      nombre: "Agroquímica (coadyuvantes)",
+      justificacion: "Solvente y vehículo de plaguicidas y bioestimulantes.",
+      ventajas: "Biodegradabilidad reduce impacto ambiental en c
