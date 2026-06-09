@@ -266,7 +266,7 @@ type Caracterizacion = {
   quimicas: { propiedad: string; valor: string; metodo: string }[];
 };
 
-function estimarCaracterizacion(p: Proyecto, e: EsterInfo): Caracterizacion {
+function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
   const { carbono } = normalizeAlcohol(p.alcoholNombre);
   // Estimaciones tipográficas según literatura (Knothe, Van Gerpen, Demirbas).
   const densidad = carbono <= 1 ? "875–890 kg/m³" : carbono === 2 ? "870–880 kg/m³" : "865–880 kg/m³";
@@ -301,8 +301,6 @@ function estimarCaracterizacion(p: Proyecto, e: EsterInfo): Caracterizacion {
       { propiedad: "Contenido energético estimado", valor: calor, metodo: "Bomba calorimétrica" },
     ],
   };
-  // Referencia al éster para silenciar warning de variable no usada.
-  void e;
 }
 
 // ====================================================================
@@ -531,8 +529,6 @@ function evaluarNichos(p: Proyecto): { nichos: Nicho[]; recomendado: Nicho } {
   ];
 
   const recomendado = [...base].sort((a, b) => b.score - a.score)[0];
-  // Referencia a p para silenciar warning.
-  void p;
   return { nichos: base, recomendado };
 }
 
