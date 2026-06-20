@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet, Link } from "react-router-dom";
 import PlataformaOleoquimica from "./routes/index";
+import MoleculeBackground from "./components/MoleculeBackground";
 
 function NotFound() {
   return (
@@ -24,7 +25,12 @@ function NotFound() {
 }
 
 function Layout() {
-  return <Outlet />;
+  return (
+    <>
+      <MoleculeBackground />
+      <Outlet />
+    </>
+  );
 }
 
 export default function App() {

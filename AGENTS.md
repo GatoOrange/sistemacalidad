@@ -30,7 +30,10 @@ No test framework installed.
 | `eslint.config.js`       | Flat ESLint config. `no-unused-vars` is **off**. Ignores `dist`            |
 | `server.js`              | Express server, serves `dist/` on `process.env.PORT \|\| 3000`             |
 | `src/lib/predictions.ts` | Prediction engine: generates JSON forecasts from process variables         |
-| `src/styles.css`         | Corporate green palette, oklch colors, single green primary tone           |
+| `src/styles.css`         | Dark-optimized palette, `--font-heading` (Outfit), `--font-sans` (Inter), `@keyframes drift` |
+| `src/components/MoleculeBackground.tsx` | Animated SVG molecule clusters (decorative background, fixed z-0) |
+| `src/components/EsterMolecule3D.tsx` | 3D ball-and-stick SVG of the specific ester (by alcohol + oil) |
+| `src/components/ErrorBoundary.tsx` | React error boundary — catches render crashes, displays dark-themed fallback with reload button |
 | `public/fonts/`          | Calibri font files (calibri.ttf, calibrib.ttf, calibrii.ttf) for PDF      |
 
 ## Dashboard tabs (8)
@@ -43,7 +46,7 @@ No test framework installed.
 | Análisis               | Ester identification + physical/chemical characterization tables + radar chart                      |
 | Predicciones           | Yield/conversion/quality stat cards + bar chart (predicted vs biodiesel) + compliance table (✔/✘)   |
 | Viabilidad y Estrategia | Global compat score (semaphore), qualitative 13-property comparison table, strengths/weaknesses, alcohol impact, strategic recommendation |
-| Mercado                | Niche cards (hover lift), market score bar chart, recommended niche card                            |
+| Mercado                | Niche cards, market score bar chart, recommended niche card                                        |
 | Informe                | PDF report generation (GC-F-005 style, Calibri 12pt, 3-section narrative)                          |
 
 ## Path alias
@@ -62,6 +65,8 @@ Defined in `src/App.tsx`.
 - `src/styles.css` imports Tailwind with `source(none)` + explicit `@source "../src"`
 - Theme: oklch color space, dark mode via `.dark` class and `@custom-variant dark`
 - `tw-animate-css` for animations
+- Fonts: Outfit (headings via `font-heading`) + Inter (body via `font-sans`)
+- Decor: `MoleculeBackground.tsx` renders 5 floating SVG molecule clusters with `@keyframes drift`
 
 ## Ignores
 

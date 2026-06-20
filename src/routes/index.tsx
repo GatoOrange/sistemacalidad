@@ -17,6 +17,7 @@ import {
   BrainCircuit,
   Shuffle,
 } from "lucide-react";
+import EsterMolecule3D from "../components/EsterMolecule3D";
 import {
   BarChart,
   Bar,
@@ -261,17 +262,59 @@ type Caracterizacion = {
 
 function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
   const { carbono } = normalizeAlcohol(p.alcoholNombre);
-  // Estimaciones tipográficas según literatura (Knothe, Van Gerpen, Demirbas).
-  const densidad =
-    carbono <= 1 ? "875–890 kg/m³" : carbono === 2 ? "870–880 kg/m³" : "865–880 kg/m³";
-  const viscosidad =
-    carbono <= 1
-      ? "3.5–5.0 cSt @40 °C"
-      : carbono === 2
-        ? "4.0–5.5 cSt @40 °C"
-        : "4.5–6.5 cSt @40 °C";
-  const inflamacion = carbono <= 1 ? "≥130 °C" : carbono === 2 ? "≥160 °C" : "≥170 °C";
-  const calor = carbono <= 1 ? "37–40 MJ/kg" : carbono === 2 ? "38–41 MJ/kg" : "39–42 MJ/kg";
+  const aceite = p.tipoAceite.toLowerCase();
+
+  /* Oil-type classification for property estimation */
+  let saturacion = "media";
+  let perfilOx = "4–8 h @110 °C";
+  let rangoNube = "-3 a +6 °C";
+  let rangoFluidez = "-10 a 0 °C";
+  let rangoDensidad = [870, 890];
+  let rangoViscosidad = [3.5, 5.0];
+  if (aceite.includes("palma")) {
+    saturacion = "alta";
+    perfilOx = "6–12 h @110 °C";
+    rangoNube = "+8 a +12 °C";
+    rangoFluidez = "+2 a +6 °C";
+    rangoDensidad = [870, 880];
+    rangoViscosidad = [4.0, 5.5];
+  } else if (aceite.includes("soja") || aceite.includes("soya")) {
+    saturacion = "baja";
+    perfilOx = "2–5 h @110 °C";
+    rangoNube = "-5 a 0 °C";
+    rangoFluidez = "-12 a -3 °C";
+    rangoDensidad = [875, 890];
+    rangoViscosidad = [3.5, 4.8];
+  } else if (aceite.includes("colza") || aceite.includes("canola")) {
+    saturacion = "baja";
+    perfilOx = "3–6 h @110 °C";
+    rangoNube = "-6 a -2 °C";
+    rangoFluidez = "-15 a -5 °C";
+    rangoDensidad = [870, 885];
+    rangoViscosidad = [4.0, 5.2];
+  } else if (aceite.includes("girasol")) {
+    saturacion = "baja";
+    perfilOx = "1–4 h @110 °C";
+    rangoNube = "-4 a +1 °C";
+    rangoFluidez = "-10 a -2 °C";
+    rangoDensidad = [875, 890];
+    rangoViscosidad = [3.5, 4.5];
+  } else {
+    /* WCO / generic */
+    saturacion = "media";
+    perfilOx = "3–7 h @110 °C";
+    rangoNube = "-3 a +6 °C";
+    rangoFluidez = "-10 a 0 °C";
+    rangoDensidad = [875, 890];
+    rangoViscosidad = [3.5, 5.0];
+  }
+
+  /* Alcohol chain adjustments */
+  const densidadDisplay = `${rangoDensidad[0] - carbono * 2}–${rangoDensidad[1] - carbono} kg/m³`;
+  const viscosidadDisplay = `${(rangoViscosidad[0] + carbono * 0.3).toFixed(1)}–${(rangoViscosidad[1] + carbono * 0.5).toFixed(1)} cSt @40 °C`;
+  const inflamacionDisplay = carbono <= 1 ? "≥130 °C" : carbono === 2 ? "≥160 °C" : "≥170 °C";
+  const calorDisplay = carbono <= 1 ? "37–40 MJ/kg" : carbono === 2 ? "38–41 MJ/kg" : "39–42 MJ/kg";
+  const estabilidadDisplay = `${perfilOx} (perfil ${saturacion} en insaturados)`;
 
   return {
     fisicas: [
@@ -286,15 +329,15 @@ function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
         metodo: "ASTM D1500",
       },
       { propiedad: "Olor", valor: "Característico, suave a éster graso", metodo: "Sensorial" },
-      { propiedad: "Densidad (15 °C)", valor: densidad, metodo: "ASTM D4052 / EN ISO 12185" },
-      { propiedad: "Viscosidad cinemática", valor: viscosidad, metodo: "ASTM D445 / EN ISO 3104" },
-      { propiedad: "Punto de inflamación", valor: inflamacion, metodo: "ASTM D93 (PMcc)" },
+      { propiedad: "Densidad (15 °C)", valor: densidadDisplay, metodo: "ASTM D4052 / EN ISO 12185" },
+      { propiedad: "Viscosidad cinemática", valor: viscosidadDisplay, metodo: "ASTM D445 / EN ISO 3104" },
+      { propiedad: "Punto de inflamación", valor: inflamacionDisplay, metodo: "ASTM D93 (PMcc)" },
       {
         propiedad: "Punto de nube",
-        valor: "-3 a +12 °C (función del perfil saturado)",
+        valor: `${rangoNube} (perfil ${saturacion})`,
         metodo: "ASTM D2500",
       },
-      { propiedad: "Punto de fluidez", valor: "-10 a +6 °C", metodo: "ASTM D97" },
+      { propiedad: "Punto de fluidez", valor: rangoFluidez, metodo: "ASTM D97" },
       {
         propiedad: "Conductividad eléctrica",
         valor: "<100 pS/m (alta resistividad)",
@@ -310,12 +353,12 @@ function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
         valor: "Baja (presión de vapor <0.1 kPa @20 °C)",
         metodo: "ASTM D2879",
       },
-      { propiedad: "Poder calorífico", valor: calor, metodo: "ASTM D240" },
+      { propiedad: "Poder calorífico", valor: calorDisplay, metodo: "ASTM D240" },
     ],
     quimicas: [
       {
         propiedad: "Estabilidad oxidativa (Rancimat)",
-        valor: "3–10 h @110 °C (mejorable con antioxidantes)",
+        valor: estabilidadDisplay,
         metodo: "EN 14112",
       },
       {
@@ -349,7 +392,7 @@ function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
         valor: "Baja (LD50 oral rata >5000 mg/kg)",
         metodo: "OECD 423",
       },
-      { propiedad: "Contenido energético estimado", valor: calor, metodo: "Bomba calorimétrica" },
+      { propiedad: "Contenido energético estimado", valor: calorDisplay, metodo: "Bomba calorimétrica" },
     ],
   };
 }
@@ -619,7 +662,7 @@ function Field({ label, value, onChange, placeholder, unit, type = "text", optio
     "w-full rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground/50 focus:border-primary focus:ring-2 focus:ring-primary/15 focus:outline-none";
 
   const labelEl = (
-    <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+    <span className="font-heading text-[10px] font-semibold uppercase tracking-wider text-foreground">
       {label}
       {unit ? <span className="ml-1.5 font-normal text-muted-foreground">({unit})</span> : null}
     </span>
@@ -703,23 +746,24 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
-      <div className="border-l-4 border-l-primary rounded-tl-xl rounded-bl-xl">
-        <div className="p-5">
-          <div className="mb-1 flex items-center gap-2">
-            {step && (
-              <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary dark:bg-primary/15 dark:text-primary">
-                {step}
-              </span>
-            )}
-            <Icon className="h-5 w-5 text-primary dark:text-primary" />
-            <h2 className="text-base font-bold text-foreground">{title}</h2>
-          </div>
-          {description && (
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</p>
+    <div className="rounded-lg border border-border bg-card shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+      <div className="p-5">
+        <div className="mb-1 flex items-center gap-2">
+          {step && (
+            <span className="inline-flex items-center rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary font-heading">
+              {step}
+            </span>
           )}
-          <div className={description || step ? "mt-4" : "mt-3"}>{children}</div>
+          <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary shrink-0">
+            <Icon className="h-3.5 w-3.5" />
+          </div>
+          <h2 className="font-heading text-sm font-semibold text-foreground">{title}</h2>
         </div>
+        {description && (
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        )}
+        <div className={description || step ? "mt-4" : "mt-3"}>{children}</div>
       </div>
     </div>
   );
@@ -728,19 +772,21 @@ function Section({
 function Badge({
   tone,
   children,
+  className,
 }: {
   tone: "ok" | "warn" | "bad" | "info";
   children: React.ReactNode;
+  className?: string;
 }) {
   const map = {
-    ok: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30",
-    warn: "bg-amber-500/15 text-amber-500 border-amber-500/30",
-    bad: "bg-destructive/15 text-destructive border-destructive/30",
-    info: "bg-primary/15 text-primary border-primary/30",
+    ok: "text-success bg-success/10 border-success/25",
+    warn: "text-warning bg-warning/10 border-warning/25",
+    bad: "text-destructive bg-destructive/10 border-destructive/25",
+    info: "text-primary bg-primary/10 border-primary/25",
   } as const;
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${map[tone]}`}
+      className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium ${map[tone]} ${className || ""}`}
     >
       {children}
     </span>
@@ -1343,11 +1389,11 @@ export default function PlataformaOleoquimica() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white dark:bg-primary dark:text-black">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
               <FlaskConical className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold leading-tight text-foreground">
+              <h1 className="font-heading text-base font-bold leading-tight text-foreground">
                 Plataforma Oleoquímica
               </h1>
               <p className="text-[11px] leading-tight text-muted-foreground">
@@ -1358,20 +1404,20 @@ export default function PlataformaOleoquimica() {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setDark((d) => !d)}
-              className="rounded-md border border-border p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="rounded-md border border-border p-2 text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.95]"
               aria-label="Cambiar tema"
             >
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <button
               onClick={rellenarDatos}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground active:scale-[0.95]"
             >
               <Shuffle className="h-3.5 w-3.5" /> Datos aleatorios
             </button>
             <button
               onClick={generarPDF}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary/90 dark:bg-primary dark:text-black dark:hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.95]"
             >
               <Download className="h-3.5 w-3.5" /> Informe PDF
             </button>
@@ -1379,7 +1425,7 @@ export default function PlataformaOleoquimica() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-6">
+      <main className="mx-auto max-w-7xl px-6 py-6 relative z-10">
         {/* Stepper — pasos de entrada */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -1395,9 +1441,9 @@ export default function PlataformaOleoquimica() {
                     <div
                       className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-all ${
                         isComplete
-                          ? "bg-primary text-white dark:bg-primary dark:text-black"
+                          ? "bg-primary text-primary-foreground"
                           : isCurrent
-                            ? "bg-primary text-white ring-2 ring-primary/30 dark:bg-primary dark:text-black dark:ring-primary/30"
+                            ? "bg-primary text-primary-foreground ring-2 ring-primary/30 ring-offset-2 ring-offset-background"
                             : "bg-muted text-muted-foreground"
                       }`}
                     >
@@ -1416,9 +1462,9 @@ export default function PlataformaOleoquimica() {
                       )}
                     </div>
                     <span
-                      className={`text-[11px] font-semibold leading-tight transition-colors ${
+                      className={`font-heading text-[11px] font-semibold leading-tight transition-colors ${
                         isCurrent || isComplete
-                          ? "text-primary dark:text-primary"
+                          ? "text-primary"
                           : "text-muted-foreground"
                       }`}
                     >
@@ -1427,11 +1473,12 @@ export default function PlataformaOleoquimica() {
                   </button>
                   {i < INPUT_STEPS.length - 1 && (
                     <div
-                      className={`mx-3 mt-[-1.25rem] h-0.5 flex-1 rounded-full transition-colors ${
-                        completedSteps.has(INPUT_STEPS[i + 1]) ||
-                        (isComplete && i < INPUT_STEPS.length - 1)
-                          ? "bg-primary/40 dark:bg-primary/40"
-                          : "bg-muted"
+                      className={`mx-3 mt-[-1.25rem] h-0.5 flex-1 rounded-full transition-all ${
+                        completedSteps.has(INPUT_STEPS[i + 1])
+                          ? "bg-primary"
+                          : isComplete
+                            ? "bg-gradient-to-r from-primary to-muted"
+                            : "bg-muted"
                       }`}
                     />
                   )}
@@ -1442,7 +1489,7 @@ export default function PlataformaOleoquimica() {
 
           {/* Separador + pestañas de resultados */}
           <div className="mt-6 flex items-center gap-6 border-t border-border pt-4">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="font-heading text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Resultados
             </span>
             <div className="flex flex-wrap gap-1">
@@ -1462,7 +1509,7 @@ export default function PlataformaOleoquimica() {
                     onClick={() => setTab(value)}
                     className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
                       isActive
-                        ? "bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary"
+                        ? "bg-primary/10 text-primary shadow-sm"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
@@ -1593,7 +1640,7 @@ export default function PlataformaOleoquimica() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={goNext}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary/90 active:scale-[0.97]"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 text-sm font-heading font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.97]"
               >
                 Siguiente
                 <svg
@@ -1765,7 +1812,7 @@ export default function PlataformaOleoquimica() {
             <div className="flex items-center justify-between pt-2">
               <button
                 onClick={goPrev}
-                className="inline-flex items-center gap-2 rounded-md border border-border px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.97]"
+                className="inline-flex items-center gap-2 rounded-md border border-border px-5 py-2 text-sm font-heading font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.97]"
               >
                 <svg
                   className="h-4 w-4"
@@ -1780,7 +1827,7 @@ export default function PlataformaOleoquimica() {
               </button>
               <button
                 onClick={goNext}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary/90 active:scale-[0.97]"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 text-sm font-heading font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.97]"
               >
                 Siguiente
                 <svg
@@ -1916,7 +1963,7 @@ export default function PlataformaOleoquimica() {
             <div className="flex items-center justify-between pt-2">
               <button
                 onClick={goPrev}
-                className="inline-flex items-center gap-2 rounded-md border border-border px-5 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.97]"
+                className="inline-flex items-center gap-2 rounded-md border border-border px-5 py-2 text-sm font-heading font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.97]"
               >
                 <svg
                   className="h-4 w-4"
@@ -1931,7 +1978,7 @@ export default function PlataformaOleoquimica() {
               </button>
               <button
                 onClick={goNext}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-primary/90 dark:bg-primary dark:text-black dark:hover:bg-primary/90"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2 text-sm font-heading font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.97]"
               >
                 Ver resultados
                 <svg
@@ -1954,42 +2001,81 @@ export default function PlataformaOleoquimica() {
               icon={Atom}
               description="A partir de las materias primas y condiciones ingresadas, el sistema infiere el tipo de éster monoalquílico producido."
             >
-              <div className="grid gap-3 text-sm">
-                <p>
-                  <Badge tone="info">{ester.abreviatura}</Badge> <strong>{ester.tipo}</strong>
-                </p>
-                <p>
-                  <strong>Familia:</strong> {ester.familia}
-                </p>
-                <p>
-                  <strong>Estructura:</strong> {ester.estructura}
-                </p>
-                <p>
-                  <strong>Mecanismo predominante:</strong> {ester.mecanismo}
-                </p>
-                <p>
-                  <strong>Influencia del alcohol:</strong> {ester.influenciaAlcohol}
-                </p>
-                <p>
-                  <strong>Influencia del catalizador:</strong> {ester.influenciaCatalizador}
-                </p>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <h3 className="mb-1 font-semibold text-emerald-500">Ventajas</h3>
-                    <ul className="list-disc space-y-1 pl-5">
-                      {ester.ventajas.map((v) => (
-                        <li key={v}>{v}</li>
-                      ))}
-                    </ul>
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-3 text-sm">
+                  <p>
+                    <Badge tone="info">{ester.abreviatura}</Badge> <strong>{ester.tipo}</strong>
+                  </p>
+                  <p>
+                    <strong>Familia:</strong> {ester.familia}
+                  </p>
+                  <p>
+                    <strong>Estructura:</strong> {ester.estructura}
+                  </p>
+                  <p>
+                    <strong>Mecanismo predominante:</strong> {ester.mecanismo}
+                  </p>
+                  <p>
+                    <strong>Influencia del alcohol:</strong> {ester.influenciaAlcohol}
+                  </p>
+                  <p>
+                    <strong>Influencia del catalizador:</strong> {ester.influenciaCatalizador}
+                  </p>
+                  {p.catBasicoNombre && (
+                    <div className="rounded-lg border border-border/60 bg-card p-3 text-xs">
+                      <strong className="text-emerald-400">Formación del alcóxido activo:</strong>{" "}
+                      {(() => {
+                        const a = p.alcoholNombre.toLowerCase();
+                        const b = p.catBasicoNombre.toLowerCase();
+                        const alcoholOk = a.includes("metanol") ? "CH\u2083OH" :
+                          a.includes("etanol") ? "C\u2082H\u2085OH" :
+                          a.includes("propan") ? "C\u2083H\u2087OH" : "ROH";
+                        const baseOk = b.includes("naoh") ? "NaOH" :
+                          b.includes("koh") ? "KOH" :
+                          b.includes("ch\u2083ona") || b.includes("ch3ona") ? "CH\u2083ONa" :
+                          b.includes("ch\u2083ok") || b.includes("ch3ok") ? "CH\u2083OK" :
+                          b.includes("c\u2082h\u2085ona") || b.includes("c2h5ona") ? "C\u2082H\u2085ONa" :
+                          b.includes("c\u2082h\u2085ok") || b.includes("c2h5ok") ? "C\u2082H\u2085OK" :
+                          p.catBasicoNombre;
+                        const preformed = b.includes("ch\u2083ona") || b.includes("ch3ona") ||
+                          b.includes("ch\u2083ok") || b.includes("ch3ok") ||
+                          b.includes("c\u2082h\u2085ona") || b.includes("c2h5ona") ||
+                          b.includes("c\u2082h\u2085ok") || b.includes("c2h5ok");
+                        if (preformed) {
+                          return <>{baseOk} ya contiene el alcóxido preformado (no requiere reacción con el alcohol). Es la especie activa que ataca nucleofílicamente el carbono carbonílico del triglicérido.</>;
+                        }
+                        return <>{baseOk} reacciona con {alcoholOk} para generar el alcóxido correspondiente in situ. Este alcóxido (RO\u207B) es el verdadero nucleófilo que ataca el carbono carbonílico del triglicérido e inicia la transesterificación.</>;
+                      })()}
+                    </div>
+                  )}
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <h3 className="mb-1 font-semibold text-emerald-500">Ventajas</h3>
+                      <ul className="list-disc space-y-1 pl-5">
+                        {ester.ventajas.map((v) => (
+                          <li key={v}>{v}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h3 className="mb-1 font-semibold text-amber-500">Limitaciones</h3>
+                      <ul className="list-disc space-y-1 pl-5">
+                        {ester.limitaciones.map((v) => (
+                          <li key={v}>{v}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="mb-1 font-semibold text-amber-500">Limitaciones</h3>
-                    <ul className="list-disc space-y-1 pl-5">
-                      {ester.limitaciones.map((v) => (
-                        <li key={v}>{v}</li>
-                      ))}
-                    </ul>
-                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 font-heading">
+                    Estructura molecular 3D estimada
+                  </p>
+                  <EsterMolecule3D
+                    alcoholName={p.alcoholNombre}
+                    oilName={p.tipoAceite}
+                    abreviature={ester.abreviatura}
+                  />
                 </div>
               </div>
             </Section>
@@ -1997,7 +2083,7 @@ export default function PlataformaOleoquimica() {
             <Section title="Caracterización técnica estimada" icon={Factory}>
               <div className="grid gap-6 md:grid-cols-2">
                 <div>
-                  <h3 className="mb-2 font-semibold">Propiedades físicas</h3>
+                  <h3 className="font-heading mb-2 font-semibold">Propiedades físicas</h3>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-left text-muted-foreground">
@@ -2018,7 +2104,7 @@ export default function PlataformaOleoquimica() {
                   </table>
                 </div>
                 <div>
-                  <h3 className="mb-2 font-semibold">Propiedades químicas</h3>
+                  <h3 className="font-heading mb-2 font-semibold">Propiedades químicas</h3>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-left text-muted-foreground">
@@ -2048,7 +2134,8 @@ export default function PlataformaOleoquimica() {
                       {" "}con <strong className="text-foreground">{p.alcoholNombre}</strong>
                     </>
                   ) : null}
-                  . Los valores varían según el alcohol y el tipo de aceite.
+                  . Ejes calculados a partir del alcohol (C{p.alcoholNombre ? normalizeAlcohol(p.alcoholNombre).carbono : "?"}) y tipo de aceite (
+                  {p.tipoAceite || "—"}).
                 </p>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
@@ -2107,24 +2194,20 @@ export default function PlataformaOleoquimica() {
                 ].map((s) => (
                   <div
                     key={s.label}
-                    className="group relative overflow-hidden rounded-xl border border-border bg-gradient-to-br from-card to-muted/30 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                    className="rounded-lg border border-border bg-card p-4 transition-all hover:shadow-md hover:-translate-y-0.5"
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {s.label}
-                        </p>
-                        <p className="mt-1 text-3xl font-bold tracking-tight text-foreground">
-                          {s.value}
-                        </p>
-                      </div>
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <s.icon className="h-5 w-5" />
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="font-heading text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {s.label}
+                      </span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded border border-border/60 text-primary">
+                        <s.icon className="h-3.5 w-3.5" />
                       </div>
                     </div>
-                    <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <p className="font-heading text-3xl font-bold text-foreground">{s.value}</p>
+                    <div className="mt-2 h-1 rounded bg-muted">
                       <div
-                        className="h-full rounded-full bg-primary transition-all"
+                        className="h-full rounded bg-primary"
                         style={{
                           width: `${Math.min(100, (parseFloat(s.value) / s.max) * 100)}%`,
                         }}
@@ -2181,16 +2264,17 @@ export default function PlataformaOleoquimica() {
             </Section>
 
             <Section title="Tabla de predicciones" icon={ClipboardList}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="sticky top-0 bg-muted/50 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <th className="py-3 pl-4 pr-4">Parámetro</th>
-                      <th className="pr-4">Valor predicho</th>
-                      <th className="pr-4">Referencia biodiésel</th>
-                      <th className="pr-4">Confianza</th>
-                      <th className="pr-4">Cumple</th>
-                      <th className="pr-4">Explicación</th>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-primary/8 text-left text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground">
+                        <th className="py-3 pl-4 pr-4">Parámetro</th>
+                        <th className="pr-4">Valor predicho</th>
+                        <th className="pr-4">Referencia biodiésel</th>
+                        <th className="pr-4">Confianza</th>
+                        <th className="pr-4">Cumple</th>
+                        <th className="pr-4">Explicación</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2212,17 +2296,17 @@ export default function PlataformaOleoquimica() {
                             {param.biodieselReferencia} {param.unidad}
                           </td>
                           <td className="pr-4">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            <span className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                               {param.confianza}%
                             </span>
                           </td>
                           <td className="pr-4">
                             {cumple ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-semibold text-success">
+                              <span className="inline-flex items-center gap-1 rounded border border-success/30 px-1.5 py-0.5 text-xs font-medium text-success">
                                 ✔ Cumple
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-semibold text-destructive">
+                              <span className="inline-flex items-center gap-1 rounded border border-destructive/30 px-1.5 py-0.5 text-xs font-medium text-destructive">
                                 ✘ No cumple
                               </span>
                             )}
@@ -2234,6 +2318,7 @@ export default function PlataformaOleoquimica() {
                   </tbody>
                 </table>
               </div>
+            </div>
             </Section>
           </TabsContent>
 
@@ -2244,9 +2329,9 @@ export default function PlataformaOleoquimica() {
               icon={TrendingUp}
             >
               {/* Score global */}
-              <div className="flex flex-wrap items-center gap-8 rounded-xl border border-border bg-gradient-to-br from-primary/5 to-primary/[0.02] p-6">
+              <div className="flex flex-wrap items-center gap-8 rounded-lg border border-border bg-card p-5">
                 <div className="flex flex-col items-center">
-                  <span className="text-5xl font-bold text-foreground">
+                    <span className="text-4xl font-bold text-foreground">
                     {compatStats.score}
                     <span className="text-2xl text-muted-foreground">%</span>
                   </span>
@@ -2286,16 +2371,17 @@ export default function PlataformaOleoquimica() {
             </Section>
 
             <Section title="Comparación cualitativa detallada" icon={ClipboardList}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <tr>
-                      <th className="bg-muted/50 py-3 pl-4 pr-2">Propiedad</th>
-                      <th className="bg-muted/50 pr-2">Producto</th>
-                      <th className="bg-muted/50 pr-2">Biodiésel</th>
-                      <th className="bg-muted/50 pr-2">Juicio</th>
-                      <th className="bg-muted/50 pr-4">Motivo técnico</th>
-                    </tr>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="text-left text-[10px] font-heading font-semibold uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="bg-primary/8 py-3 pl-4 pr-2">Propiedad</th>
+                        <th className="bg-primary/8 pr-2">Producto</th>
+                        <th className="bg-primary/8 pr-2">Biodiésel</th>
+                        <th className="bg-primary/8 pr-2">Juicio</th>
+                        <th className="bg-primary/8 pr-4">Motivo técnico</th>
+                      </tr>
                   </thead>
                   <tbody>
                     {comparativa.map((c, i) => (
@@ -2325,17 +2411,18 @@ export default function PlataformaOleoquimica() {
                   </tbody>
                 </table>
               </div>
+            </div>
             </Section>
 
             {(fortalezas.length > 0 || debilidades.length > 0) && (
               <Section title="Fortalezas vs Áreas de mejora" icon={Settings2}>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-success/30 bg-success/5 p-4">
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-success">
+                  <div className="rounded-lg border border-border p-4">
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-success">
                       <span>▲</span> Fortalezas
                     </h3>
                     {fortalezas.length > 0 ? (
-                      <ul className="space-y-2">
+                      <ul className="space-y-1.5">
                         {fortalezas.map((f) => (
                           <li key={f.propiedad} className="text-sm">
                             <span className="font-medium text-foreground">{f.propiedad}</span>
@@ -2350,12 +2437,12 @@ export default function PlataformaOleoquimica() {
                       </p>
                     )}
                   </div>
-                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-destructive">
+                  <div className="rounded-lg border border-border p-4">
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-destructive">
                       <span>▼</span> Áreas de mejora
                     </h3>
                     {debilidades.length > 0 ? (
-                      <ul className="space-y-2">
+                      <ul className="space-y-1.5">
                         {debilidades.map((d) => (
                           <li key={d.propiedad} className="text-sm">
                             <span className="font-medium text-foreground">{d.propiedad}</span>
@@ -2374,12 +2461,12 @@ export default function PlataformaOleoquimica() {
             )}
 
             <Section title="Impacto del alcohol seleccionado" icon={FlaskConical}>
-              <div className="flex items-start gap-4 rounded-xl border border-border bg-card p-4">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <div className="flex items-start gap-4 rounded-lg border border-border bg-card p-4">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded border border-border text-primary">
                   <FlaskConical className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="mb-1 text-sm font-semibold text-foreground">
+                  <p className="mb-1 font-heading text-sm font-semibold text-foreground">
                     Alcohol: {p.alcoholNombre || "—"}
                   </p>
                   <p className="text-sm leading-relaxed text-muted-foreground">
@@ -2390,7 +2477,7 @@ export default function PlataformaOleoquimica() {
             </Section>
 
             <Section title="Recomendación estratégica" icon={Target}>
-              <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-primary/[0.02] p-5">
+              <div className="rounded-lg border border-border bg-card p-5">
                 <p className="text-sm leading-relaxed text-foreground/80">
                   {recomendacionEstrategica}
                 </p>
@@ -2405,10 +2492,10 @@ export default function PlataformaOleoquimica() {
                 {nichos.map((n) => (
                   <div
                     key={n.nombre}
-                    className="rounded-xl border border-border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                    className="rounded-lg border border-border bg-card p-4"
                   >
                     <div className="mb-2 flex items-center justify-between">
-                      <h3 className="font-semibold text-foreground">{n.nombre}</h3>
+                      <h3 className="font-heading font-semibold text-foreground">{n.nombre}</h3>
                       <Badge
                         tone={
                           n.potencial === "Alto" ? "ok" : n.potencial === "Medio" ? "warn" : "bad"
@@ -2457,10 +2544,10 @@ export default function PlataformaOleoquimica() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <div className="mt-4 rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 p-5 text-sm transition-all hover:shadow-md">
+              <div className="mt-4 rounded-lg border border-border bg-card p-5 text-sm">
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-primary" />
-                  <h3 className="font-semibold text-primary">
+                  <span className="flex h-2 w-2 rounded bg-primary" />
+                  <h3 className="font-heading font-medium text-primary">
                     Nicho recomendado: {recomendado.nombre}
                   </h3>
                 </div>
@@ -2484,7 +2571,7 @@ export default function PlataformaOleoquimica() {
               </p>
               <button
                 onClick={generarPDF}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.97]"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-heading font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.97]"
               >
                 <Download className="h-4 w-4" /> Descargar informe PDF
               </button>
