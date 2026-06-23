@@ -152,7 +152,33 @@ function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
 }
 
-const NUM_INSTANCES = 12;
+const NUM_INSTANCES = 14;
+
+type EdgePosition = 'top' | 'bottom' | 'left' | 'right' | 'corner';
+
+function pickEdgePosition(index: number): EdgePosition {
+  const positions: EdgePosition[] = ['top', 'right', 'bottom', 'left', 'corner'];
+  return positions[index % positions.length];
+}
+
+function getEdgeCoordinates(edge: EdgePosition) {
+  switch (edge) {
+    case 'top':
+      return { x: rand(10, 90), y: rand(3, 10) };
+    case 'bottom':
+      return { x: rand(10, 90), y: rand(90, 97) };
+    case 'left':
+      return { x: rand(3, 10), y: rand(15, 85) };
+    case 'right':
+      return { x: rand(90, 97), y: rand(15, 85) };
+    case 'corner':
+      const corner = Math.floor(rand(0, 4));
+      if (corner === 0) return { x: rand(3, 10), y: rand(3, 10) };
+      if (corner === 1) return { x: rand(90, 97), y: rand(3, 10) };
+      if (corner === 2) return { x: rand(3, 10), y: rand(90, 97) };
+      return { x: rand(90, 97), y: rand(90, 97) };
+  }
+}
 
 export default function MoleculeBackground() {
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -160,13 +186,15 @@ export default function MoleculeBackground() {
   useEffect(() => {
     const result: Instance[] = [];
     for (let i = 0; i < NUM_INSTANCES; i++) {
+      const edge = pickEdgePosition(i);
+      const { x, y } = getEdgeCoordinates(edge);
       result.push({
-        x: rand(5, 95),
-        y: rand(5, 95),
+        x,
+        y,
         color: COLORS[i % COLORS.length],
-        delay: rand(0, 8),
+        delay: rand(0, 12),
         molIndex: i % MOLECULES.length,
-        scale: rand(0.18, 0.35),
+        scale: rand(0.2, 0.38),
       });
     }
     setInstances(result);
@@ -182,7 +210,7 @@ export default function MoleculeBackground() {
         className="h-full w-full"
       >
         {instances.map((inst, i) => {
-          const dur = 50 + inst.delay * 6;
+          const dur = 70 + inst.delay * 8;
           return (
             <g
               key={i}
@@ -192,7 +220,7 @@ export default function MoleculeBackground() {
                 <animateTransform
                   attributeName="transform"
                   type="translate"
-                  values="0,0; 1.8,-2.5; -1.2,1.8; 2.5,1.2; 0,0"
+                  values="0,0; 0.8,-1; -0.6,0.8; 1,0.5; 0,0"
                   dur={`${dur}s`}
                   begin={`${inst.delay}s`}
                   repeatCount="indefinite"
