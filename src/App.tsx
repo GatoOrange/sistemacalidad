@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Outlet, Link } from "react-router-dom";
 import PlataformaOleoquimica from "./routes/index";
 import MoleculeBackground from "./components/MoleculeBackground";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFound() {
   return (
@@ -29,6 +30,7 @@ function Layout() {
     <>
       <MoleculeBackground />
       <Outlet />
+      <Toaster />
     </>
   );
 }

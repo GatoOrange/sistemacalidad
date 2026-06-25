@@ -154,24 +154,24 @@ function rand(min: number, max: number) {
 
 const NUM_INSTANCES = 14;
 
-type EdgePosition = 'top' | 'bottom' | 'left' | 'right' | 'corner';
+type EdgePosition = "top" | "bottom" | "left" | "right" | "corner";
 
 function pickEdgePosition(index: number): EdgePosition {
-  const positions: EdgePosition[] = ['top', 'right', 'bottom', 'left', 'corner'];
+  const positions: EdgePosition[] = ["top", "right", "bottom", "left", "corner"];
   return positions[index % positions.length];
 }
 
 function getEdgeCoordinates(edge: EdgePosition) {
   switch (edge) {
-    case 'top':
+    case "top":
       return { x: rand(10, 90), y: rand(3, 10) };
-    case 'bottom':
+    case "bottom":
       return { x: rand(10, 90), y: rand(90, 97) };
-    case 'left':
+    case "left":
       return { x: rand(3, 10), y: rand(15, 85) };
-    case 'right':
+    case "right":
       return { x: rand(90, 97), y: rand(15, 85) };
-    case 'corner':
+    case "corner":
       const corner = Math.floor(rand(0, 4));
       if (corner === 0) return { x: rand(3, 10), y: rand(3, 10) };
       if (corner === 1) return { x: rand(90, 97), y: rand(3, 10) };
@@ -204,18 +204,11 @@ export default function MoleculeBackground() {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none">
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="xMidYMid slice"
-        className="h-full w-full"
-      >
+      <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" className="h-full w-full">
         {instances.map((inst, i) => {
           const dur = 70 + inst.delay * 8;
           return (
-            <g
-              key={i}
-              transform={`translate(${inst.x}, ${inst.y}) scale(${inst.scale})`}
-            >
+            <g key={i} transform={`translate(${inst.x}, ${inst.y}) scale(${inst.scale})`}>
               <g>
                 <animateTransform
                   attributeName="transform"

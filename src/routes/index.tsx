@@ -37,6 +37,8 @@ import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { generatePredictions } from "@/lib/predictions";
 import type { PrediccionOutput } from "@/lib/predictions";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { toast } from "sonner";
 
 // ====================================================================
 // FASE 1 — Variables del proceso (toda la información como variables)
@@ -329,8 +331,16 @@ function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
         metodo: "ASTM D1500",
       },
       { propiedad: "Olor", valor: "Característico, suave a éster graso", metodo: "Sensorial" },
-      { propiedad: "Densidad (15 °C)", valor: densidadDisplay, metodo: "ASTM D4052 / EN ISO 12185" },
-      { propiedad: "Viscosidad cinemática", valor: viscosidadDisplay, metodo: "ASTM D445 / EN ISO 3104" },
+      {
+        propiedad: "Densidad (15 °C)",
+        valor: densidadDisplay,
+        metodo: "ASTM D4052 / EN ISO 12185",
+      },
+      {
+        propiedad: "Viscosidad cinemática",
+        valor: viscosidadDisplay,
+        metodo: "ASTM D445 / EN ISO 3104",
+      },
       { propiedad: "Punto de inflamación", valor: inflamacionDisplay, metodo: "ASTM D93 (PMcc)" },
       {
         propiedad: "Punto de nube",
@@ -392,7 +402,11 @@ function estimarCaracterizacion(p: Proyecto, _e: EsterInfo): Caracterizacion {
         valor: "Baja (LD50 oral rata >5000 mg/kg)",
         metodo: "OECD 423",
       },
-      { propiedad: "Contenido energético estimado", valor: calorDisplay, metodo: "Bomba calorimétrica" },
+      {
+        propiedad: "Contenido energético estimado",
+        valor: calorDisplay,
+        metodo: "Bomba calorimétrica",
+      },
     ],
   };
 }
@@ -760,9 +774,7 @@ function Section({
           </div>
           <h2 className="font-heading text-sm font-semibold text-foreground">{title}</h2>
         </div>
-        {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        )}
+        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
         <div className={description || step ? "mt-4" : "mt-3"}>{children}</div>
       </div>
     </div>
@@ -898,16 +910,14 @@ export default function PlataformaOleoquimica() {
     const mejores = comparativa.filter((c) => c.juicio === "Mejor").length;
     const similares = comparativa.filter((c) => c.juicio === "Similar").length;
     const inferiores = comparativa.filter((c) => c.juicio === "Inferior").length;
-    const score = total > 0 ? Math.round((mejores * 100 + similares * 70 + inferiores * 40) / total) : 0;
+    const score =
+      total > 0 ? Math.round((mejores * 100 + similares * 70 + inferiores * 40) / total) : 0;
     const nivel = score >= 80 ? "APTA" : score >= 55 ? "CONDICIONADA" : "NO APTA";
     const color: "ok" | "warn" | "bad" = score >= 80 ? "ok" : score >= 55 ? "warn" : "bad";
     return { total, mejores, similares, inferiores, score, nivel, color };
   }, [comparativa]);
 
-  const fortalezas = useMemo(
-    () => comparativa.filter((c) => c.juicio === "Mejor"),
-    [comparativa],
-  );
+  const fortalezas = useMemo(() => comparativa.filter((c) => c.juicio === "Mejor"), [comparativa]);
   const debilidades = useMemo(
     () => comparativa.filter((c) => c.juicio === "Inferior"),
     [comparativa],
@@ -935,23 +945,38 @@ export default function PlataformaOleoquimica() {
     const partes: string[] = [];
 
     if (score >= 80) {
-      partes.push("El producto presenta alta compatibilidad con el biodiésel FAME-NaOH convencional.");
+      partes.push(
+        "El producto presenta alta compatibilidad con el biodiésel FAME-NaOH convencional.",
+      );
     } else if (score >= 55) {
-      partes.push("El producto es parcialmente compatible con el biodiésel FAME-NaOH convencional y resulta viable con ajustes específicos.");
+      partes.push(
+        "El producto es parcialmente compatible con el biodiésel FAME-NaOH convencional y resulta viable con ajustes específicos.",
+      );
     } else {
-      partes.push("El producto presenta diferencias significativas frente al biodiésel FAME-NaOH convencional y se recomienda para aplicaciones especializadas fuera del mercado de combustibles para automoción.");
+      partes.push(
+        "El producto presenta diferencias significativas frente al biodiésel FAME-NaOH convencional y se recomienda para aplicaciones especializadas fuera del mercado de combustibles para automoción.",
+      );
     }
 
     if (mejores > 0) {
-      const tops = comparativa.filter((c) => c.juicio === "Mejor").slice(0, 2).map((c) => c.propiedad.toLowerCase());
-      partes.push(`Sus principales ventajas son ${tops.join(" y ")}, que lo posicionan favorablemente en nichos donde estas propiedades sean críticas.`);
+      const tops = comparativa
+        .filter((c) => c.juicio === "Mejor")
+        .slice(0, 2)
+        .map((c) => c.propiedad.toLowerCase());
+      partes.push(
+        `Sus principales ventajas son ${tops.join(" y ")}, que lo posicionan favorablemente en nichos donde estas propiedades sean críticas.`,
+      );
     }
 
     if (inferiores > 0) {
-      const peors = comparativa.filter((c) => c.juicio === "Inferior").slice(0, 2).map((c) => c.propiedad.toLowerCase());
-      const mejora = key === "metanol" || key === "etanol"
-        ? "Se recomienda evaluar el uso de alcoholes superiores, aditivos antioxidantes (BHT/TBHQ) y optimizar las condiciones de purificación."
-        : "Se recomienda ajustar las condiciones de reacción y purificación para mitigar estas diferencias.";
+      const peors = comparativa
+        .filter((c) => c.juicio === "Inferior")
+        .slice(0, 2)
+        .map((c) => c.propiedad.toLowerCase());
+      const mejora =
+        key === "metanol" || key === "etanol"
+          ? "Se recomienda evaluar el uso de alcoholes superiores, aditivos antioxidantes (BHT/TBHQ) y optimizar las condiciones de purificación."
+          : "Se recomienda ajustar las condiciones de reacción y purificación para mitigar estas diferencias.";
       partes.push(`Las áreas que requieren atención son ${peors.join(" y ")}. ${mejora}`);
     }
 
@@ -965,15 +990,19 @@ export default function PlataformaOleoquimica() {
     const esInsaturado = aceite.includes("soja") || aceite.includes("girasol");
 
     // Cada eje escalado 0–100 según el alcohol y el aceite
-    const solvencia = carbono >= 5 ? 93 : carbono >= 4 ? 90 : carbono >= 3 ? 86 : carbono === 2 ? 80 : 72;
+    const solvencia =
+      carbono >= 5 ? 93 : carbono >= 4 ? 90 : carbono >= 3 ? 86 : carbono === 2 ? 80 : 72;
     const biodegradabilidad = esInsaturado ? 96 : carbono <= 2 ? 94 : 88;
     const lubricidad = Math.min(98, 68 + carbono * 4);
-    const estabOx =
-      esSaturado ? 85
-      : key === "butanol" || key === "pentanol" ? 82
-      : key === "isopropanol" || carbono >= 5 ? 78
-      : key === "etanol" ? 62
-      : 52;
+    const estabOx = esSaturado
+      ? 85
+      : key === "butanol" || key === "pentanol"
+        ? 82
+        : key === "isopropanol" || carbono >= 5
+          ? 78
+          : key === "etanol"
+            ? 62
+            : 52;
     const energia = Math.min(98, 62 + carbono * 4);
     const seguridad = carbono >= 4 ? 93 : carbono >= 3 ? 88 : carbono === 2 ? 82 : 72;
 
@@ -1015,7 +1044,7 @@ export default function PlataformaOleoquimica() {
         nombre: "Aceite de cocina usado (mezcla)",
         acidez: [1.8, 5.0],
         densidad: [0.908, 0.925],
-        humedad: [0.05, 0.50],
+        humedad: [0.05, 0.5],
         saponificacion: [180, 200],
         yodo: [70, 120],
         perfilAG: "C16:0=20%, C18:0=5%, C18:1=42%, C18:2=28%, C18:3=3%, otros=2%",
@@ -1034,8 +1063,8 @@ export default function PlataformaOleoquimica() {
       {
         nombre: "Aceite de soja (Glycine max)",
         acidez: [0.3, 1.5],
-        densidad: [0.910, 0.925],
-        humedad: [0.01, 0.10],
+        densidad: [0.91, 0.925],
+        humedad: [0.01, 0.1],
         saponificacion: [189, 195],
         yodo: [120, 143],
         perfilAG: "C16:0=11%, C18:0=4%, C18:1=24%, C18:2=53%, C18:3=8%",
@@ -1044,7 +1073,7 @@ export default function PlataformaOleoquimica() {
       {
         nombre: "Aceite de colza (Brassica napus)",
         acidez: [0.3, 1.2],
-        densidad: [0.910, 0.920],
+        densidad: [0.91, 0.92],
         humedad: [0.02, 0.15],
         saponificacion: [170, 180],
         yodo: [110, 126],
@@ -1067,7 +1096,16 @@ export default function PlataformaOleoquimica() {
     const temp = elegir(50, 55, 60, 65, 70);
     const tiempo = elegir(30, 45, 60, 90, 120);
     const mol = elegir("1:6", "1:9", "1:12");
-    const alcohol = elegir("Metanol", "Etanol", "Isopropanol", "Butanol", "Propanol", "Pentanol", "Hexanol", "Octanol");
+    const alcohol = elegir(
+      "Metanol",
+      "Etanol",
+      "Isopropanol",
+      "Butanol",
+      "Propanol",
+      "Pentanol",
+      "Hexanol",
+      "Octanol",
+    );
     const cat = elegir("NaOH", "KOH", "CH₃ONa", "CH₃OK", "C₂H₅ONa", "C₂H₅OK");
 
     const acidNum = parseFloat(rand(...pAceite.acidez, 1));
@@ -1143,244 +1181,612 @@ export default function PlataformaOleoquimica() {
   };
 
   const generarPDF = async () => {
-    const doc = new jsPDF({ unit: "pt", format: "letter" });
-
-    // Cargar fuente Calibri desde los archivos en public/fonts/
     try {
-      const [calibri, calibrib, calibrii] = await Promise.all([
-        fetch("/fonts/calibri.ttf").then((r) => r.arrayBuffer()),
-        fetch("/fonts/calibrib.ttf").then((r) => r.arrayBuffer()),
-        fetch("/fonts/calibrii.ttf").then((r) => r.arrayBuffer()),
-      ]);
-      doc.addFileToVFS(
-        "calibri.ttf",
-        new Uint8Array(calibri).reduce((s, b) => s + String.fromCharCode(b), ""),
-      );
-      doc.addFileToVFS(
-        "calibrib.ttf",
-        new Uint8Array(calibrib).reduce((s, b) => s + String.fromCharCode(b), ""),
-      );
-      doc.addFileToVFS(
-        "calibrii.ttf",
-        new Uint8Array(calibrii).reduce((s, b) => s + String.fromCharCode(b), ""),
-      );
-      doc.addFont("calibri.ttf", "Calibri", "normal");
-      doc.addFont("calibrib.ttf", "Calibri", "bold");
-      doc.addFont("calibrii.ttf", "Calibri", "italic");
-    } catch {
-      // Fallback a Helvetica si no carga Calibri
-      console.warn("No se pudo cargar Calibri, usando Helvetica");
-    }
+      const doc = new jsPDF({ unit: "pt", format: "letter" });
+      const FONT = "Calibri";
 
-    // Configuración de fuente según GC-F-005
-    const font = "Calibri";
-    const sizeNormal = 12;
-    const sizeH1 = 14;
-    const sizePortada = 16;
-    const naranja: [number, number, number] = [255, 102, 0];
-    const M = 50;
-    const W = 612 - 2 * M;
-    let y = M;
+      // ── Colores corporativos ──
+      const C_GREEN = "#1a7a3a";
+      const C_TEAL = "#0d9488";
+      const C_DARK = "#2d2d2d";
+      const C_GRAY = "#6b7280";
+      const C_LIGHT = "#f5f5f5";
+      const C_BORDER = "#d1d5db";
+      const C_WHITE = "#ffffff";
+      const C_WARN = "#f59e0b";
+      const C_RED = "#dc2626";
 
-    const h1 = (t: string) => {
-      if (y > 720) {
+      const hexRgb = (h: string): [number, number, number] => [
+        parseInt(h.slice(1, 3), 16),
+        parseInt(h.slice(3, 5), 16),
+        parseInt(h.slice(5, 7), 16),
+      ];
+      const [Gr, Gg, Gb] = hexRgb(C_GREEN);
+      const [Tr, Tg, Tb] = hexRgb(C_TEAL);
+      const [Dr, Dg, Db] = hexRgb(C_DARK);
+      const [Gyr, Gyg, Gyb] = hexRgb(C_GRAY);
+      const [Lr, Lg, Lb] = hexRgb(C_LIGHT);
+      const [Br, Bg, Bb] = hexRgb(C_BORDER);
+      const [Wr, Wg, Wb] = hexRgb(C_WHITE);
+      const [Wnr, Wng, Wnb] = hexRgb(C_WARN);
+      const [Rr, Rg, Rb] = hexRgb(C_RED);
+
+      const PW = 612,
+        PH = 792;
+      const M = 50;
+      const CW = PW - 2 * M;
+      let y = M;
+
+      // ── Cargar fuente Calibri ──
+      try {
+        const [calibri, calibrib, calibrii] = await Promise.all([
+          fetch("/fonts/calibri.ttf").then((r) => r.arrayBuffer()),
+          fetch("/fonts/calibrib.ttf").then((r) => r.arrayBuffer()),
+          fetch("/fonts/calibrii.ttf").then((r) => r.arrayBuffer()),
+        ]);
+        doc.addFileToVFS(
+          "calibri.ttf",
+          new Uint8Array(calibri).reduce((s, b) => s + String.fromCharCode(b), ""),
+        );
+        doc.addFileToVFS(
+          "calibrib.ttf",
+          new Uint8Array(calibrib).reduce((s, b) => s + String.fromCharCode(b), ""),
+        );
+        doc.addFileToVFS(
+          "calibrii.ttf",
+          new Uint8Array(calibrii).reduce((s, b) => s + String.fromCharCode(b), ""),
+        );
+        doc.addFont("calibri.ttf", "Calibri", "normal");
+        doc.addFont("calibrib.ttf", "Calibri", "bold");
+        doc.addFont("calibrii.ttf", "Calibri", "italic");
+      } catch {
+        console.warn("No se pudo cargar Calibri, usando Helvetica");
+      }
+
+      // ── Helpers ──
+      const newPage = () => {
         doc.addPage();
         y = M;
-      }
-      doc.setFont(font, "bold");
-      doc.setFontSize(sizeH1);
-      doc.setTextColor(...naranja);
-      doc.text(t, M, y);
-      y += 20;
-      doc.setTextColor(0);
-    };
+      };
 
-    const h2 = (t: string) => {
-      if (y > 730) {
-        doc.addPage();
-        y = M;
-      }
-      doc.setFont(font, "bold");
-      doc.setFontSize(sizeNormal);
-      doc.setTextColor(...naranja);
-      doc.text(t, M, y);
-      y += 16;
-      doc.setTextColor(0);
-    };
+      const checkSpace = (pt: number) => {
+        if (y + pt > PH - M) newPage();
+      };
 
-    const para = (t: string) => {
-      doc.setFont(font, "normal");
-      doc.setFontSize(sizeNormal);
-      doc.setTextColor(0);
-      const lines = doc.splitTextToSize(t || "—", W);
-      lines.forEach((ln: string) => {
-        if (y > 750) {
-          doc.addPage();
-          y = M;
+      const rect = (
+        x: number,
+        w: number,
+        h: number,
+        fill: [number, number, number],
+        stroke?: [number, number, number],
+      ) => {
+        if (stroke) {
+          doc.setDrawColor(...stroke);
+          doc.setLineWidth(0.5);
         }
-        doc.text(ln, M, y, { align: "justify" });
-        y += 15;
+        doc.setFillColor(...fill);
+        doc.rect(x, y, w, h, stroke ? "FD" : "F");
+      };
+
+      const para = (text: string, fontSize = 10, color = C_DARK as string, bold = false) => {
+        const lines = doc.splitTextToSize(text || "", CW);
+        const lh = fontSize * 0.352 * 1.55;
+        checkSpace(lines.length * lh + 8);
+        doc.setFont(FONT, bold ? "bold" : "normal");
+        doc.setFontSize(fontSize);
+        doc.setTextColor(...hexRgb(color));
+        lines.forEach((ln: string) => {
+          if (y > PH - M - lh) newPage();
+          doc.text(ln, M, y, { align: "justify" });
+          y += lh;
+        });
+        y += 4;
+      };
+
+      const bullet = (text: string, indent = 14) => {
+        const lines = doc.splitTextToSize(text || "", CW - indent);
+        const lh = 10 * 0.352 * 1.55;
+        checkSpace(lines.length * lh + 6);
+        doc.setFont(FONT, "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(...hexRgb(C_DARK));
+        lines.forEach((ln: string) => {
+          if (y > PH - M - lh) newPage();
+          doc.text("•", M, y);
+          doc.text(ln, M + indent, y);
+          y += lh;
+        });
+        y += 3;
+      };
+
+      const contentHeader = () => {
+        doc.setFont(FONT, "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(Gr, Gg, Gb);
+        doc.text(`${ester.tipo} (${ester.abreviatura})`, M, 28);
+      };
+
+      // ── autoTable wrapper ──
+      type ColStyle = { cellWidth?: number; halign?: string };
+      const runTable = (
+        headers: string[],
+        rows: (string | number)[][],
+        opts?: {
+          columns?: { header: string; dataKey: string }[];
+          colStyles?: Record<number, ColStyle>;
+          startY?: number;
+        },
+      ) => {
+        const startY = opts?.startY ?? y + 4;
+        autoTable(doc, {
+          head: [headers],
+          body: rows,
+          startY,
+          theme: "striped",
+          tableLineColor: [Br, Bg, Bb],
+          tableLineWidth: 0.3,
+          headStyles: {
+            fillColor: [Gr, Gg, Gb] as number[],
+            textColor: [Wr, Wg, Wb] as number[],
+            fontStyle: "bold",
+            font: FONT,
+            fontSize: 9,
+            halign: "center" as const,
+            lineColor: [Gr, Gg, Gb] as number[],
+          },
+          bodyStyles: {
+            font: FONT,
+            fontSize: 8.5,
+            textColor: [Dr, Dg, Db] as number[],
+            lineColor: [Br, Bg, Bb] as number[],
+          },
+          alternateRowStyles: {
+            fillColor: [Lr, Lg, Lb] as number[],
+          },
+          margin: { left: M, right: M, top: 40, bottom: 40 },
+          columnStyles: opts?.colStyles ?? {},
+          didDrawPage: () => {
+            const pg = doc.internal.getCurrentPageInfo().pageNumber;
+            if (pg > 1) {
+              doc.setFont(FONT, "bold");
+              doc.setFontSize(8);
+              doc.setTextColor(Gr, Gg, Gb);
+              doc.text(`${ester.tipo} (${ester.abreviatura})`, M, 28);
+            }
+          },
+        });
+        y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 14;
+      };
+
+      // ═══════════════════════════ PORTADA ═══════════════════════════
+      // Bloque verde superior
+      doc.setFillColor(Gr, Gg, Gb);
+      doc.rect(0, 0, PW, 210, "F");
+      // Línea decorativa teal debajo del bloque
+      doc.setDrawColor(Tr, Tg, Tb);
+      doc.setLineWidth(2);
+      doc.line(0, 210, PW, 210);
+      // Título
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(26);
+      doc.setTextColor(Wr, Wg, Wb);
+      doc.text("INFORME TÉCNICO", PW / 2, 90, { align: "center" });
+      doc.setFontSize(14);
+      doc.text(`Obtención y caracterización de ${ester.tipo} (${ester.abreviatura})`, PW / 2, 118, {
+        align: "center",
       });
-      y += 4;
-    };
+      doc.setFont(FONT, "normal");
+      doc.setFontSize(11);
+      doc.text(`a partir de ${p.tipoAceite || "aceite residual de cocina"}`, PW / 2, 142, {
+        align: "center",
+      });
 
-    const item = (k: string, v?: string) => {
-      if (v) para(`• ${k}: ${v}`);
-    };
+      // Recuadro de metadatos
+      y = 250;
+      rect(M, CW, 90, [Lr, Lg, Lb], [Br, Bg, Bb]);
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Dr, Dg, Db);
+      doc.text("DATOS DEL PROYECTO", M + 16, y + 16);
+      doc.setDrawColor(Br, Bg, Bb);
+      doc.line(M + 16, y + 22, PW - M - 16, y + 22);
+      doc.setFont(FONT, "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(Dr, Dg, Db);
+      const metaItems = [
+        ["Producto:", `${ester.tipo} (${ester.abreviatura})`],
+        ["Materia prima:", p.tipoAceite || "—"],
+        ["Alcohol:", p.alcoholNombre || "—"],
+        ["Catalizador:", p.catBasicoNombre || "—"],
+        ["Fecha de emisión:", new Date().toLocaleDateString()],
+      ];
+      let my = y + 36;
+      metaItems.forEach(([k, v]) => {
+        doc.setFont(FONT, "bold");
+        doc.text(k, M + 16, my);
+        doc.setFont(FONT, "normal");
+        doc.text(v, M + 90, my);
+        my += 16;
+      });
 
-    // ==================== PORTADA ====================
-    doc.setFont(font, "bold");
-    doc.setFontSize(sizePortada);
-    doc.setTextColor(...naranja);
-    doc.text("INFORME TÉCNICO", M, y);
-    y += 22;
-    doc.setFontSize(sizeH1);
-    doc.setTextColor(0);
-    doc.text(`Obtención y caracterización de ${ester.tipo} (${ester.abreviatura})`, M, y);
-    y += 18;
-    doc.setFont(font, "normal");
-    doc.setFontSize(sizeNormal);
-    doc.text(`a partir de ${p.tipoAceite || "aceite residual de cocina"}`, M, y);
-    y += 22;
-    doc.setDrawColor(...naranja);
-    doc.setLineWidth(1);
-    doc.line(M, y, 612 - M, y);
-    y += 16;
-    doc.setFontSize(11);
-    doc.text(`Producto: ${ester.tipo} (${ester.abreviatura})`, M, y);
-    y += 14;
-    doc.text(`Fecha de emisión: ${new Date().toLocaleDateString()}`, M, y);
-    y += 30;
+      // ══════════════════ 1. IDENTIFICACIÓN DEL ÉSTER ══════════════════
+      newPage();
+      contentHeader();
+      // Section title with teal side bar
+      doc.setFillColor(Tr, Tg, Tb);
+      doc.rect(M, y, 3, 16, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text("1. Identificación del éster monoalquílico", M + 10, y + 12);
+      y += 26;
 
-    // ==================== 1. IDENTIFICACIÓN DEL ÉSTER ====================
-    h1("1. Identificación del éster monoalquílico");
-
-    h2("1.1 Materias primas empleadas");
-    para(
-      `Se utilizó como materia prima ${p.tipoAceite || "aceite residual de cocina"}${p.origenAceite ? ` de origen ${p.origenAceite}` : ""}, ` +
-        `con un índice de acidez de ${p.acidez || "—"} mg KOH/g, densidad de ${p.densidadAceite || "—"} g/mL ` +
-        `y contenido de humedad de ${p.humedadAceite || "—"}%. ` +
-        `${p.perfilAG ? `Su perfil de ácidos grasos corresponde a ${p.perfilAG}. ` : ""}` +
-        `Como alcohol se empleó ${p.alcoholNombre || "el alcohol seleccionado"} (${p.alcoholFormula || "—"}, pureza ${p.alcoholPureza || "—"}%) ` +
-        `en una relación molar aceite:alcohol de ${p.relacionMolar || "—"}, y como catalizador básico se utilizó ${p.catBasicoNombre || "—"} ` +
-        `${p.catBasicoConcentracion ? `al ${p.catBasicoConcentracion}` : ""}. ` +
-        `${p.catAcidoNombre ? `Se realizó una esterificación ácida previa con ${p.catAcidoNombre} ${p.catAcidoConcentracion ? `al ${p.catAcidoConcentracion}` : ""}. ` : ""}` +
-        `El proceso se llevó a cabo a ${p.temperatura || "—"} °C durante ${p.tiempoReaccion || "—"} min ` +
-        `con agitación de ${p.agitacion || "—"} rpm, alcanzando un rendimiento de ${p.rendimiento || "—"}% ` +
-        `y una conversión de ${p.conversion || "—"}%.`,
-    );
-
-    h2("1.2 Identificación química");
-    para(
-      `El producto obtenido corresponde a un éster de la familia ${ester.familia || "de los monoalquílicos"}. ` +
-        `Su estructura química se describe como: ${ester.estructura || "—"}. ` +
-        `El mecanismo de formación predominante es ${ester.mecanismo || "la transesterificación alcalina"}. ` +
-        `La selección de ${p.alcoholNombre || "alcohol"} influye en ${ester.influenciaAlcohol || "la longitud de la cadena alquílica del éster"}, ` +
-        `mientras que ${p.catBasicoNombre || "el catalizador"} determina ${ester.influenciaCatalizador || "la velocidad y selectividad de la reacción"}.`,
-    );
-
-    h2("1.3 Caracterización fisicoquímica");
-    para(
-      "A continuación se presentan las propiedades físicas y químicas determinadas experimentalmente:",
-    );
-    para("Propiedades físicas:");
-    carac.fisicas.forEach((f) => para(`  • ${f.propiedad}: ${f.valor} (método: ${f.metodo})`));
-    para("Propiedades químicas:");
-    carac.quimicas.forEach((q) => para(`  • ${q.propiedad}: ${q.valor} (método: ${q.metodo})`));
-
-    // ==================== 2. CARACTERIZACIÓN COMPARATIVA ====================
-    h1("2. Caracterización comparativa con biodiésel convencional");
-
-    h2("2.1 Comparación propiedad por propiedad");
-    para(
-      `Se compararon las propiedades del ${ester.abreviatura || "producto obtenido"} frente al biodiésel convencional FAME-NaOH. ` +
-        `Los resultados se resumen a continuación:`,
-    );
-    comparativa.forEach((c) =>
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("1.1 Materias primas empleadas", M, y);
+      y += 16;
       para(
-        `• ${c.propiedad}: el producto presenta un valor de ${c.productoValor}, frente a ${c.biodieselValor} del biodiésel de referencia. ` +
-          `El análisis comparativo indica que ${c.juicio.toLowerCase()}, debido a que ${c.motivo?.toLowerCase() || "las condiciones de proceso evaluadas así lo determinan"}.`,
-      ),
-    );
+        `Se utilizó como materia prima ${p.tipoAceite || "aceite residual de cocina"}${p.origenAceite ? ` de origen ${p.origenAceite}` : ""}, ` +
+          `con un índice de acidez de ${p.acidez || "—"} mg KOH/g, densidad de ${p.densidadAceite || "—"} g/mL ` +
+          `y contenido de humedad de ${p.humedadAceite || "—"}%. ` +
+          `${p.perfilAG ? `Su perfil de ácidos grasos corresponde a ${p.perfilAG}. ` : ""}` +
+          `Como alcohol se empleó ${p.alcoholNombre || "el alcohol seleccionado"} (${p.alcoholFormula || "—"}, pureza ${p.alcoholPureza || "—"}%) ` +
+          `en una relación molar aceite:alcohol de ${p.relacionMolar || "—"}, y como catalizador básico se utilizó ${p.catBasicoNombre || "—"} ` +
+          `${p.catBasicoConcentracion ? `al ${p.catBasicoConcentracion}` : ""}. ` +
+          `${p.catAcidoNombre ? `Se realizó una esterificación ácida previa con ${p.catAcidoNombre} ${p.catAcidoConcentracion ? `al ${p.catAcidoConcentracion}` : ""}. ` : ""}` +
+          `El proceso se llevó a cabo a ${p.temperatura || "—"} °C durante ${p.tiempoReaccion || "—"} min ` +
+          `con agitación de ${p.agitacion || "—"} rpm, alcanzando un rendimiento de ${p.rendimiento || "—"}% ` +
+          `y una conversión de ${p.conversion || "—"}%.`,
+      );
 
-    h2("2.2 Ventajas y limitaciones del producto");
-    para("El éster obtenido presenta las siguientes ventajas frente al biodiésel convencional:");
-    ester.ventajas.forEach((v) => para(`  • ${v}`));
-    para(
-      "Asimismo, se identifican las siguientes limitaciones que deben considerarse para su aplicación:",
-    );
-    ester.limitaciones.forEach((v) => para(`  • ${v}`));
-
-    h2("2.3 Predicciones del sistema");
-    para(
-      `El modelo de predicción estimó un rendimiento de ${prediccion.resumen.rendimiento}%, ` +
-        `una conversión de ${prediccion.resumen.conversion}% y una calidad global de ${prediccion.resumen.calidadGlobal}/100. ` +
-        `La compatibilidad con biodiésel convencional se calculó en ${prediccion.biodieselCompatibilidad}%. ` +
-        `En cuanto a los parámetros fisicoquímicos predichos:`,
-    );
-    prediccion.parametros.forEach((param) =>
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("1.2 Identificación química", M, y);
+      y += 16;
       para(
-        `  • ${param.parametro}: valor estimado ${param.valorPredicho} ${param.unidad} ` +
-          `(referencia biodiésel: ${param.biodieselReferencia} ${param.unidad}, confianza: ${param.confianza}%). ${param.explicacion}`,
-      ),
-    );
+        `El producto obtenido corresponde a un éster de la familia ${ester.familia || "de los monoalquílicos"}. ` +
+          `Su estructura química se describe como: ${ester.estructura || "—"}. ` +
+          `El mecanismo de formación predominante es ${ester.mecanismo || "la transesterificación alcalina"}. ` +
+          `La selección de ${p.alcoholNombre || "alcohol"} influye en ${ester.influenciaAlcohol || "la longitud de la cadena alquílica del éster"}, ` +
+          `mientras que ${p.catBasicoNombre || "el catalizador"} determina ${ester.influenciaCatalizador || "la velocidad y selectividad de la reacción"}.`,
+      );
 
-    // ==================== 3. EVALUACIÓN DE MERCADO ====================
-    h1("3. Evaluación de mercado y recomendación comercial");
-
-    h2("3.1 Nichos de mercado identificados");
-    para(
-      "Se evaluaron los siguientes nichos de mercado potenciales para el éster obtenido, considerando sus propiedades fisicoquímicas y ventajas competitivas:",
-    );
-    nichos.forEach((n) =>
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("1.3 Caracterización fisicoquímica", M, y);
+      y += 16;
       para(
-        `• ${n.nombre} (potencial: ${n.potencial}). ${n.justificacion} ` +
-          `Ventajas en este nicho: ${n.ventajas}. Limitaciones: ${n.limitaciones}.`,
-      ),
-    );
+        "A continuación se presentan las propiedades físicas y químicas determinadas experimentalmente:",
+        10,
+        C_GRAY,
+      );
 
-    h2("3.2 Recomendación comercial");
-    para(
-      `Con base en el análisis multicriterio, se recomienda orientar el producto hacia el nicho de ${recomendado.nombre}, ` +
-        `con una puntuación de ${recomendado.score}/100. ${recomendado.justificacion} ` +
-        `Las ventajas competitivas que respaldan esta recomendación son: ${recomendado.ventajas}. ` +
-        `Las limitaciones que deberán gestionarse incluyen: ${recomendado.limitaciones}.`,
-    );
+      // Tabla propiedades físicas
+      runTable(
+        ["Propiedad", "Valor", "Método"],
+        carac.fisicas.map((f) => [f.propiedad, f.valor, f.metodo]),
+        { colStyles: { 0: { cellWidth: 140 }, 1: { cellWidth: 180 }, 2: { cellWidth: 120 } } },
+      );
 
-    // ==================== CONCLUSIONES ====================
-    h1("Conclusiones");
-    para(
-      `El proceso evaluado permite obtener ${ester.tipo} (${ester.abreviatura}) con propiedades fisicoquímicas coherentes con la literatura oleoquímica. ` +
-        `La combinación de ${p.tipoAceite || "aceite residual"} como materia prima, ${p.alcoholNombre || "alcohol seleccionado"} como agente de transesterificación ` +
-        `y ${p.catBasicoNombre || "catalizador básico"} determina la estructura molecular del éster resultante, ` +
-        `cuyas características lo posicionan como un producto viable más allá del biodiésel convencional. ` +
-        `El análisis comparativo frente a FAME-NaOH evidencia que, si bien existen diferencias en parámetros específicos, ` +
-        `el producto presenta ventajas significativas en los nichos de mercado identificados, particularmente en ${recomendado.nombre}. ` +
-        `Se recomienda continuar con la optimización del proceso y la validación experimental de las predicciones generadas por el sistema.`,
-    );
+      // Tabla propiedades químicas
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("Propiedades químicas", M, y);
+      y += 6;
+      runTable(
+        ["Propiedad", "Valor", "Método"],
+        carac.quimicas.map((q) => [q.propiedad, q.valor, q.metodo]),
+        { colStyles: { 0: { cellWidth: 140 }, 1: { cellWidth: 180 }, 2: { cellWidth: 120 } } },
+      );
 
-    // ==================== RECOMENDACIONES ====================
-    h1("Recomendaciones");
-    [
-      "Reducir la acidez inicial por debajo de 1 mg KOH/g antes de la transesterificación básica para evitar reacciones de saponificación.",
-      "Controlar la humedad por debajo de 0,05% a fin de minimizar la formación de jabones y emulsionantes no deseados.",
-      "Optimizar la relación molar alcohol:aceite mediante diseño de experimentos por superficie de respuesta.",
-      "Incorporar antioxidantes (TBHQ, pirogalol) para mejorar la estabilidad oxidativa del producto final.",
-      "Evaluar procesos de refinación adicional según el nicho objetivo (cosmético, lubricante, solvente, etc.).",
-      "Validar experimentalmente las predicciones generadas por el sistema para ajustar los modelos de estimación.",
-    ].forEach((r) => para(`• ${r}`));
+      // ══════════════════ 2. CARACTERIZACIÓN COMPARATIVA ══════════════════
+      newPage();
+      contentHeader();
+      doc.setFillColor(Tr, Tg, Tb);
+      doc.rect(M, y, 3, 16, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text("2. Caracterización comparativa con biodiésel convencional", M + 10, y + 12);
+      y += 26;
 
-    // ==================== REFERENCIAS ====================
-    h1("Referencias");
-    [
-      "Knothe, G., Van Gerpen, J., Krahl, J. (2010). The Biodiesel Handbook. AOCS Press.",
-      "Demirbas, A. (2009). Biodiesel: A Realistic Fuel Alternative for Diesel Engines. Springer.",
-      "Ma, F., Hanna, M. A. (1999). Biodiesel production: a review. Bioresource Technology 70(1), 1–15.",
-      "Meher, L. C., Vidya Sagar, D., Naik, S. N. (2006). Technical aspects of biodiesel production by transesterification. Renewable & Sustainable Energy Reviews 10(3), 248–268.",
-      "EN 14214; ASTM D6751; ISO 15380; OECD 301B.",
-    ].forEach((r) => para(r));
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("2.1 Comparación propiedad por propiedad", M, y);
+      y += 16;
+      para(
+        `Se compararon las propiedades del ${ester.abreviatura || "producto obtenido"} frente al biodiésel convencional FAME-NaOH. ` +
+          `Los resultados se resumen a continuación:`,
+      );
 
-    doc.save(`Informe_${ester.abreviatura}_${Date.now()}.pdf`);
+      const juicioColor = (j: string): [number, number, number] =>
+        j === "Mejor" ? [Gr, Gg, Gb] : j === "Similar" ? [Wnr, Wng, Wnb] : [Rr, Rg, Rb];
+
+      runTable(
+        ["Propiedad", "Producto", "Biodiésel", "Juicio", "Fundamento técnico"],
+        comparativa.map((c) => [
+          c.propiedad,
+          c.productoValor,
+          c.biodieselValor,
+          c.juicio,
+          c.motivo,
+        ]),
+        {
+          colStyles: {
+            3: { halign: "center" as const, cellWidth: 50 },
+            4: { cellWidth: 160 },
+          },
+        },
+      );
+
+      // 2.2 Ventajas y limitaciones
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("2.2 Ventajas y limitaciones del producto", M, y);
+      y += 16;
+      para(
+        "El éster obtenido presenta las siguientes ventajas frente al biodiésel convencional:",
+        10,
+        C_GRAY,
+      );
+      ester.ventajas.forEach((v) => bullet(v));
+      para(
+        "Asimismo, se identifican las siguientes limitaciones que deben considerarse para su aplicación:",
+        10,
+        C_GRAY,
+      );
+      ester.limitaciones.forEach((v) => bullet(v));
+
+      // 2.3 Predicciones del sistema — Tarjetas de métricas
+      newPage();
+      contentHeader();
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("2.3 Predicciones del sistema", M, y);
+      y += 16;
+
+      const metricCards = [
+        { label: "Rendimiento estimado", value: `${prediccion.resumen.rendimiento}%`, max: 100 },
+        { label: "Conversión estimada", value: `${prediccion.resumen.conversion}%`, max: 100 },
+        { label: "Calidad global", value: `${prediccion.resumen.calidadGlobal}/100`, max: 100 },
+      ];
+      const cardW = (CW - 24) / 3;
+      metricCards.forEach((card, i) => {
+        const cx = M + i * (cardW + 12);
+        const pct = Math.min(1, parseFloat(card.value) / card.max);
+        // Card background
+        doc.setFillColor(Lr, Lg, Lb);
+        doc.setDrawColor(Br, Bg, Bb);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(cx, y, cardW, 70, 4, 4, "FD");
+        // Label
+        doc.setFont(FONT, "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(Gyr, Gyg, Gyb);
+        doc.text(card.label, cx + 10, y + 16);
+        // Value
+        doc.setFont(FONT, "bold");
+        doc.setFontSize(20);
+        doc.setTextColor(Gr, Gg, Gb);
+        doc.text(card.value, cx + 10, y + 44);
+        // Progress bar background
+        doc.setFillColor(255 - (255 - Br) * 0.5, 255 - (255 - Bg) * 0.5, 255 - (255 - Bb) * 0.5); // lighter border color
+        doc.setDrawColor(Br, Bg, Bb);
+        doc.roundedRect(cx + 10, y + 52, cardW - 20, 6, 3, 3, "FD");
+        // Progress bar fill
+        if (pct > 0) {
+          doc.setFillColor(Gr, Gg, Gb);
+          doc.roundedRect(cx + 10, y + 52, (cardW - 20) * pct, 6, 3, 3, "F");
+        }
+      });
+      y += 90;
+
+      // Compatibility score card
+      const compatColor: [number, number, number] =
+        compatStats.color === "ok"
+          ? [Gr, Gg, Gb]
+          : compatStats.color === "warn"
+            ? [Wnr, Wng, Wnb]
+            : [Rr, Rg, Rb];
+      rect(M, CW, 52, [Lr, Lg, Lb], [Br, Bg, Bb]);
+      doc.setFillColor(...compatColor);
+      doc.rect(M, y, 4, 52, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text(`${compatStats.score}%`, M + 18, y + 32);
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...compatColor);
+      doc.text(compatStats.nivel, M + 58, y + 20);
+      doc.setFont(FONT, "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(Gyr, Gyg, Gyb);
+      doc.text(
+        `Mejores: ${compatStats.mejores} · Similares: ${compatStats.similares} · Inferiores: ${compatStats.inferiores}`,
+        M + 58,
+        y + 34,
+      );
+      doc.text("Compatibilidad con biodiésel convencional", M + 58, y + 44);
+      y += 68;
+
+      // Tabla de parámetros predichos
+      runTable(
+        ["Parámetro", "Valor", "Unidad", "Referencia", "Confianza", "Cumple"],
+        prediccion.parametros.map((param) => {
+          const cumple = cumpleNorma(param) ? "✔" : "✘";
+          return [
+            param.parametro,
+            param.valorPredicho.toString(),
+            param.unidad,
+            param.biodieselReferencia.toString(),
+            `${param.confianza}%`,
+            cumple,
+          ];
+        }),
+        {
+          colStyles: {
+            0: { cellWidth: 110 },
+            4: { halign: "center" as const },
+            5: { halign: "center" as const },
+          },
+        },
+      );
+
+      // ══════════════════ 3. EVALUACIÓN DE MERCADO ══════════════════
+      newPage();
+      contentHeader();
+      doc.setFillColor(Tr, Tg, Tb);
+      doc.rect(M, y, 3, 16, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text("3. Evaluación de mercado y recomendación comercial", M + 10, y + 12);
+      y += 26;
+
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("3.1 Nichos de mercado identificados", M, y);
+      y += 16;
+      para(
+        "Se evaluaron los siguientes nichos de mercado potenciales para el éster obtenido, considerando sus propiedades fisicoquímicas y ventajas competitivas:",
+      );
+
+      runTable(
+        ["Nicho", "Potencial", "Puntaje", "Ventajas", "Limitaciones"],
+        nichos.map((n) => [n.nombre, n.potencial, `${n.score}/100`, n.ventajas, n.limitaciones]),
+        {
+          colStyles: {
+            1: { halign: "center" as const, cellWidth: 48 },
+            2: { halign: "center" as const, cellWidth: 40 },
+            3: { cellWidth: 120 },
+            4: { cellWidth: 120 },
+          },
+        },
+      );
+
+      // 3.2 Recomendación comercial
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(Tr, Tg, Tb);
+      doc.text("3.2 Recomendación comercial", M, y);
+      y += 16;
+
+      // Highlighted recommendation box
+      doc.setFillColor(Lr, Lg, Lb);
+      doc.setDrawColor(Gr, Gg, Gb);
+      doc.setLineWidth(1);
+      doc.roundedRect(M, y, CW, 60, 4, 4, "FD");
+      doc.setFillColor(Gr, Gg, Gb);
+      doc.rect(M, y, 4, 60, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text(`Nicho recomendado: ${recomendado.nombre}`, M + 16, y + 18);
+      doc.setFont(FONT, "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(Dr, Dg, Db);
+      const recText = `${recomendado.justificacion} Puntuación: ${recomendado.score}/100. Ventajas: ${recomendado.ventajas}. Limitaciones: ${recomendado.limitaciones}.`;
+      const recLines = doc.splitTextToSize(recText, CW - 36);
+      let ry = y + 32;
+      recLines.forEach((ln: string) => {
+        doc.text(ln, M + 16, ry);
+        ry += 13;
+      });
+      y += 80;
+
+      // ══════════════════ CONCLUSIONES ══════════════════
+      newPage();
+      contentHeader();
+      doc.setFillColor(Tr, Tg, Tb);
+      doc.rect(M, y, 3, 16, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text("Conclusiones", M + 10, y + 12);
+      y += 26;
+
+      para(
+        `El proceso evaluado permite obtener ${ester.tipo} (${ester.abreviatura}) con propiedades fisicoquímicas coherentes con la literatura oleoquímica. ` +
+          `La combinación de ${p.tipoAceite || "aceite residual"} como materia prima, ${p.alcoholNombre || "alcohol seleccionado"} como agente de transesterificación ` +
+          `y ${p.catBasicoNombre || "catalizador básico"} determina la estructura molecular del éster resultante, ` +
+          `cuyas características lo posicionan como un producto viable más allá del biodiésel convencional. ` +
+          `El análisis comparativo frente a FAME-NaOH evidencia que, si bien existen diferencias en parámetros específicos, ` +
+          `el producto presenta ventajas significativas en los nichos de mercado identificados, particularmente en ${recomendado.nombre}. ` +
+          `Se recomienda continuar con la optimización del proceso y la validación experimental de las predicciones generadas por el sistema.`,
+      );
+
+      // ══════════════════ RECOMENDACIONES ══════════════════
+      doc.setFillColor(Tr, Tg, Tb);
+      doc.rect(M, y, 3, 16, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text("Recomendaciones", M + 10, y + 12);
+      y += 26;
+
+      [
+        "Reducir la acidez inicial por debajo de 1 mg KOH/g antes de la transesterificación básica para evitar reacciones de saponificación.",
+        "Controlar la humedad por debajo de 0,05% a fin de minimizar la formación de jabones y emulsionantes no deseados.",
+        "Optimizar la relación molar alcohol:aceite mediante diseño de experimentos por superficie de respuesta.",
+        "Incorporar antioxidantes (TBHQ, pirogalol) para mejorar la estabilidad oxidativa del producto final.",
+        "Evaluar procesos de refinación adicional según el nicho objetivo (cosmético, lubricante, solvente, etc.).",
+        "Validar experimentalmente las predicciones generadas por el sistema para ajustar los modelos de estimación.",
+      ].forEach((r) => bullet(r));
+
+      // ══════════════════ REFERENCIAS ══════════════════
+      doc.setFillColor(Tr, Tg, Tb);
+      doc.rect(M, y, 3, 16, "F");
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(Gr, Gg, Gb);
+      doc.text("Referencias", M + 10, y + 12);
+      y += 26;
+
+      [
+        "Knothe, G., Van Gerpen, J., Krahl, J. (2010). The Biodiesel Handbook. AOCS Press.",
+        "Demirbas, A. (2009). Biodiesel: A Realistic Fuel Alternative for Diesel Engines. Springer.",
+        "Ma, F., Hanna, M. A. (1999). Biodiesel production: a review. Bioresource Technology 70(1), 1–15.",
+        "Meher, L. C., Vidya Sagar, D., Naik, S. N. (2006). Technical aspects of biodiesel production by transesterification. Renewable & Sustainable Energy Reviews 10(3), 248–268.",
+        "EN 14214; ASTM D6751; ISO 15380; OECD 301B.",
+      ].forEach((r) => para(r, 9, C_GRAY));
+
+      // ══════════════════ PÁGINAS: encabezado + pie ══════════════════
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        if (i === 1) continue;
+        // Header
+        doc.setFont(FONT, "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(Gr, Gg, Gb);
+        doc.text(`${ester.tipo} (${ester.abreviatura})`, M, 28);
+        // Footer line
+        doc.setDrawColor(Br, Bg, Bb);
+        doc.setLineWidth(0.5);
+        doc.line(M, PH - 36, PW - M, PH - 36);
+        // Footer
+        doc.setFont(FONT, "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(Gyr, Gyg, Gyb);
+        doc.text(`Página ${i} de ${totalPages}`, M, PH - 22);
+        doc.text(new Date().toLocaleDateString(), PW - M, PH - 22, { align: "right" });
+      }
+
+      doc.save(`Informe_${ester.abreviatura}_${Date.now()}.pdf`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Error al generar PDF:", err);
+      toast.error(`Error al generar el PDF: ${msg}`);
+    }
   };
 
   return (
@@ -1463,9 +1869,7 @@ export default function PlataformaOleoquimica() {
                     </div>
                     <span
                       className={`font-heading text-[11px] font-semibold leading-tight transition-colors ${
-                        isCurrent || isComplete
-                          ? "text-primary"
-                          : "text-muted-foreground"
+                        isCurrent || isComplete ? "text-primary" : "text-muted-foreground"
                       }`}
                     >
                       {stepLabel[step]}
@@ -2027,24 +2431,52 @@ export default function PlataformaOleoquimica() {
                       {(() => {
                         const a = p.alcoholNombre.toLowerCase();
                         const b = p.catBasicoNombre.toLowerCase();
-                        const alcoholOk = a.includes("metanol") ? "CH\u2083OH" :
-                          a.includes("etanol") ? "C\u2082H\u2085OH" :
-                          a.includes("propan") ? "C\u2083H\u2087OH" : "ROH";
-                        const baseOk = b.includes("naoh") ? "NaOH" :
-                          b.includes("koh") ? "KOH" :
-                          b.includes("ch\u2083ona") || b.includes("ch3ona") ? "CH\u2083ONa" :
-                          b.includes("ch\u2083ok") || b.includes("ch3ok") ? "CH\u2083OK" :
-                          b.includes("c\u2082h\u2085ona") || b.includes("c2h5ona") ? "C\u2082H\u2085ONa" :
-                          b.includes("c\u2082h\u2085ok") || b.includes("c2h5ok") ? "C\u2082H\u2085OK" :
-                          p.catBasicoNombre;
-                        const preformed = b.includes("ch\u2083ona") || b.includes("ch3ona") ||
-                          b.includes("ch\u2083ok") || b.includes("ch3ok") ||
-                          b.includes("c\u2082h\u2085ona") || b.includes("c2h5ona") ||
-                          b.includes("c\u2082h\u2085ok") || b.includes("c2h5ok");
+                        const alcoholOk = a.includes("metanol")
+                          ? "CH\u2083OH"
+                          : a.includes("etanol")
+                            ? "C\u2082H\u2085OH"
+                            : a.includes("propan")
+                              ? "C\u2083H\u2087OH"
+                              : "ROH";
+                        const baseOk = b.includes("naoh")
+                          ? "NaOH"
+                          : b.includes("koh")
+                            ? "KOH"
+                            : b.includes("ch\u2083ona") || b.includes("ch3ona")
+                              ? "CH\u2083ONa"
+                              : b.includes("ch\u2083ok") || b.includes("ch3ok")
+                                ? "CH\u2083OK"
+                                : b.includes("c\u2082h\u2085ona") || b.includes("c2h5ona")
+                                  ? "C\u2082H\u2085ONa"
+                                  : b.includes("c\u2082h\u2085ok") || b.includes("c2h5ok")
+                                    ? "C\u2082H\u2085OK"
+                                    : p.catBasicoNombre;
+                        const preformed =
+                          b.includes("ch\u2083ona") ||
+                          b.includes("ch3ona") ||
+                          b.includes("ch\u2083ok") ||
+                          b.includes("ch3ok") ||
+                          b.includes("c\u2082h\u2085ona") ||
+                          b.includes("c2h5ona") ||
+                          b.includes("c\u2082h\u2085ok") ||
+                          b.includes("c2h5ok");
                         if (preformed) {
-                          return <>{baseOk} ya contiene el alcóxido preformado (no requiere reacción con el alcohol). Es la especie activa que ataca nucleofílicamente el carbono carbonílico del triglicérido.</>;
+                          return (
+                            <>
+                              {baseOk} ya contiene el alcóxido preformado (no requiere reacción con
+                              el alcohol). Es la especie activa que ataca nucleofílicamente el
+                              carbono carbonílico del triglicérido.
+                            </>
+                          );
                         }
-                        return <>{baseOk} reacciona con {alcoholOk} para generar el alcóxido correspondiente in situ. Este alcóxido (RO\u207B) es el verdadero nucleófilo que ataca el carbono carbonílico del triglicérido e inicia la transesterificación.</>;
+                        return (
+                          <>
+                            {baseOk} reacciona con {alcoholOk} para generar el alcóxido
+                            correspondiente in situ. Este alcóxido (RO\u207B) es el verdadero
+                            nucleófilo que ataca el carbono carbonílico del triglicérido e inicia la
+                            transesterificación.
+                          </>
+                        );
                       })()}
                     </div>
                   )}
@@ -2131,18 +2563,25 @@ export default function PlataformaOleoquimica() {
                   <strong className="text-foreground">{ester.abreviatura || "el éster"}</strong>
                   {p.alcoholNombre ? (
                     <>
-                      {" "}con <strong className="text-foreground">{p.alcoholNombre}</strong>
+                      {" "}
+                      con <strong className="text-foreground">{p.alcoholNombre}</strong>
                     </>
                   ) : null}
-                  . Ejes calculados a partir del alcohol (C{p.alcoholNombre ? normalizeAlcohol(p.alcoholNombre).carbono : "?"}) y tipo de aceite (
-                  {p.tipoAceite || "—"}).
+                  . Ejes calculados a partir del alcohol (C
+                  {p.alcoholNombre ? normalizeAlcohol(p.alcoholNombre).carbono : "?"}) y tipo de
+                  aceite ({p.tipoAceite || "—"}).
                 </p>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart data={dataRadar}>
                       <PolarGrid stroke={gridStroke} />
                       <PolarAngleAxis dataKey="eje" tick={{ fill: gridTick, fontSize: 11 }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: gridTick, fontSize: 10 }} stroke={gridStroke} />
+                      <PolarRadiusAxis
+                        angle={30}
+                        domain={[0, 100]}
+                        tick={{ fill: gridTick, fontSize: 10 }}
+                        stroke={gridStroke}
+                      />
                       <Radar
                         name="Perfil técnico"
                         dataKey="v"
@@ -2232,7 +2671,10 @@ export default function PlataformaOleoquimica() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dataComparacionGrafica} barCategoryGap={12}>
                     <CartesianGrid strokeDasharray="4 4" stroke={gridStroke} />
-                    <XAxis dataKey="nombre" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <XAxis
+                      dataKey="nombre"
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    />
                     <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <Tooltip
                       contentStyle={{
@@ -2242,10 +2684,7 @@ export default function PlataformaOleoquimica() {
                         boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                       }}
                     />
-                    <Legend
-                      wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-                      iconType="circle"
-                    />
+                    <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} iconType="circle" />
                     <Bar
                       dataKey="Predicción"
                       fill="hsl(var(--primary))"
@@ -2275,50 +2714,50 @@ export default function PlataformaOleoquimica() {
                         <th className="pr-4">Confianza</th>
                         <th className="pr-4">Cumple</th>
                         <th className="pr-4">Explicación</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {prediccion.parametros.map((param, i) => {
-                      const cumple = cumpleNorma(param);
-                      return (
-                        <tr
-                          key={param.parametro}
-                          className={`align-top transition-colors hover:bg-muted/40 ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}
-                        >
-                          <td className="py-3 pl-4 pr-4 font-medium">{param.parametro}</td>
-                          <td className="pr-4">
-                            <span className="font-semibold text-foreground">
-                              {param.valorPredicho}
-                            </span>{" "}
-                            <span className="text-muted-foreground">{param.unidad}</span>
-                          </td>
-                          <td className="pr-4 text-muted-foreground">
-                            {param.biodieselReferencia} {param.unidad}
-                          </td>
-                          <td className="pr-4">
-                            <span className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-                              {param.confianza}%
-                            </span>
-                          </td>
-                          <td className="pr-4">
-                            {cumple ? (
-                              <span className="inline-flex items-center gap-1 rounded border border-success/30 px-1.5 py-0.5 text-xs font-medium text-success">
-                                ✔ Cumple
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prediccion.parametros.map((param, i) => {
+                        const cumple = cumpleNorma(param);
+                        return (
+                          <tr
+                            key={param.parametro}
+                            className={`align-top transition-colors hover:bg-muted/40 ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}
+                          >
+                            <td className="py-3 pl-4 pr-4 font-medium">{param.parametro}</td>
+                            <td className="pr-4">
+                              <span className="font-semibold text-foreground">
+                                {param.valorPredicho}
+                              </span>{" "}
+                              <span className="text-muted-foreground">{param.unidad}</span>
+                            </td>
+                            <td className="pr-4 text-muted-foreground">
+                              {param.biodieselReferencia} {param.unidad}
+                            </td>
+                            <td className="pr-4">
+                              <span className="inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+                                {param.confianza}%
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded border border-destructive/30 px-1.5 py-0.5 text-xs font-medium text-destructive">
-                                ✘ No cumple
-                              </span>
-                            )}
-                          </td>
-                          <td className="pr-4 text-muted-foreground">{param.explicacion}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="pr-4">
+                              {cumple ? (
+                                <span className="inline-flex items-center gap-1 rounded border border-success/30 px-1.5 py-0.5 text-xs font-medium text-success">
+                                  ✔ Cumple
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 rounded border border-destructive/30 px-1.5 py-0.5 text-xs font-medium text-destructive">
+                                  ✘ No cumple
+                                </span>
+                              )}
+                            </td>
+                            <td className="pr-4 text-muted-foreground">{param.explicacion}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
             </Section>
           </TabsContent>
 
@@ -2331,7 +2770,7 @@ export default function PlataformaOleoquimica() {
               {/* Score global */}
               <div className="flex flex-wrap items-center gap-8 rounded-lg border border-border bg-card p-5">
                 <div className="flex flex-col items-center">
-                    <span className="text-4xl font-bold text-foreground">
+                  <span className="text-4xl font-bold text-foreground">
                     {compatStats.score}
                     <span className="text-2xl text-muted-foreground">%</span>
                   </span>
@@ -2345,12 +2784,13 @@ export default function PlataformaOleoquimica() {
                     propiedades evaluadas
                   </p>
                   <p>
-                    <span className="font-semibold text-success">{compatStats.mejores}</span> Mejores{" "}
-                    <span className="mx-2">·</span>
+                    <span className="font-semibold text-success">{compatStats.mejores}</span>{" "}
+                    Mejores <span className="mx-2">·</span>
                     <span className="font-semibold text-primary">{compatStats.similares}</span>{" "}
-                    Similares{" "}
-                    <span className="mx-2">·</span>
-                    <span className="font-semibold text-destructive">{compatStats.inferiores}</span>{" "}
+                    Similares <span className="mx-2">·</span>
+                    <span className="font-semibold text-destructive">
+                      {compatStats.inferiores}
+                    </span>{" "}
                     Inferiores
                   </p>
                   {compatStats.mejores >= compatStats.inferiores ? (
@@ -2382,36 +2822,36 @@ export default function PlataformaOleoquimica() {
                         <th className="bg-primary/8 pr-2">Juicio</th>
                         <th className="bg-primary/8 pr-4">Motivo técnico</th>
                       </tr>
-                  </thead>
-                  <tbody>
-                    {comparativa.map((c, i) => (
-                      <tr
-                        key={c.propiedad}
-                        className={`align-top transition-colors hover:bg-muted/40 ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}
-                      >
-                        <td className="py-2 pl-4 pr-2 font-medium">{c.propiedad}</td>
-                        <td className="pr-2 font-semibold">{c.productoValor}</td>
-                        <td className="pr-2 text-muted-foreground">{c.biodieselValor}</td>
-                        <td className="pr-2">
-                          <Badge
-                            tone={
-                              c.juicio === "Mejor"
-                                ? "ok"
-                                : c.juicio === "Similar"
-                                  ? "info"
-                                  : "bad"
-                            }
-                          >
-                            {c.juicio}
-                          </Badge>
-                        </td>
-                        <td className="text-muted-foreground">{c.motivo}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {comparativa.map((c, i) => (
+                        <tr
+                          key={c.propiedad}
+                          className={`align-top transition-colors hover:bg-muted/40 ${i % 2 === 0 ? "bg-background" : "bg-muted/20"}`}
+                        >
+                          <td className="py-2 pl-4 pr-2 font-medium">{c.propiedad}</td>
+                          <td className="pr-2 font-semibold">{c.productoValor}</td>
+                          <td className="pr-2 text-muted-foreground">{c.biodieselValor}</td>
+                          <td className="pr-2">
+                            <Badge
+                              tone={
+                                c.juicio === "Mejor"
+                                  ? "ok"
+                                  : c.juicio === "Similar"
+                                    ? "info"
+                                    : "bad"
+                              }
+                            >
+                              {c.juicio}
+                            </Badge>
+                          </td>
+                          <td className="text-muted-foreground">{c.motivo}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
             </Section>
 
             {(fortalezas.length > 0 || debilidades.length > 0) && (
@@ -2469,9 +2909,7 @@ export default function PlataformaOleoquimica() {
                   <p className="mb-1 font-heading text-sm font-semibold text-foreground">
                     Alcohol: {p.alcoholNombre || "—"}
                   </p>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {efectoAlcohol}
-                  </p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{efectoAlcohol}</p>
                 </div>
               </div>
             </Section>
@@ -2490,10 +2928,7 @@ export default function PlataformaOleoquimica() {
             <Section title="Identificación de oportunidades de mercado" icon={Target}>
               <div className="grid gap-4 md:grid-cols-2">
                 {nichos.map((n) => (
-                  <div
-                    key={n.nombre}
-                    className="rounded-lg border border-border bg-card p-4"
-                  >
+                  <div key={n.nombre} className="rounded-lg border border-border bg-card p-4">
                     <div className="mb-2 flex items-center justify-between">
                       <h3 className="font-heading font-semibold text-foreground">{n.nombre}</h3>
                       <Badge
@@ -2524,8 +2959,15 @@ export default function PlataformaOleoquimica() {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dataNichos} barCategoryGap={12}>
                     <CartesianGrid strokeDasharray="4 4" stroke={gridStroke} />
-                    <XAxis dataKey="nombre" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={0} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <XAxis
+                      dataKey="nombre"
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                      interval={0}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    />
                     <Tooltip
                       contentStyle={{
                         background: "hsl(var(--card))",

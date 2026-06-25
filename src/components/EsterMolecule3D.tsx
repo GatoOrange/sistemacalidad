@@ -19,10 +19,7 @@ function atom(cx: number, cy: number, r: number, g: string) {
   return <circle cx={cx} cy={cy} r={r} fill={`url(#${g})`} />;
 }
 
-function bnd(
-  x1: number, y1: number, x2: number, y2: number,
-  color: string, w = 3, double = false,
-) {
+function bnd(x1: number, y1: number, x2: number, y2: number, color: string, w = 3, double = false) {
   if (Math.abs(x2 - x1) < 0.1 && Math.abs(y2 - y1) < 0.1) return null;
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -33,44 +30,90 @@ function bnd(
     <>
       <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={w} strokeLinecap="round" />
       {double && (
-        <line x1={x1 + nx} y1={y1 + ny} x2={x2 + nx} y2={y2 + ny} stroke={color} strokeWidth={w * 0.7} strokeLinecap="round" />
+        <line
+          x1={x1 + nx}
+          y1={y1 + ny}
+          x2={x2 + nx}
+          y2={y2 + ny}
+          stroke={color}
+          strokeWidth={w * 0.7}
+          strokeLinecap="round"
+        />
       )}
     </>
   );
 }
 
 function chain(
-  sx: number, sy: number, angleRad: number, count: number,
-  cGrad: string, hGrad: string, bClr: string, bhClr: string,
+  sx: number,
+  sy: number,
+  angleRad: number,
+  count: number,
+  cGrad: string,
+  hGrad: string,
+  bClr: string,
+  bhClr: string,
 ) {
   const spacing = 14;
   const items: React.ReactNode[] = [];
-  let px = sx, py = sy;
+  let px = sx,
+    py = sy;
 
   for (let i = 0; i < count; i++) {
     const off = i % 2 === 0 ? 0.5 : -0.5;
     const nx = px + Math.cos(angleRad + off) * spacing;
     const ny = py + Math.sin(angleRad + off) * spacing;
     items.push(
-      <line key={`b${i}`} x1={px} y1={py} x2={nx} y2={ny} stroke={bClr} strokeWidth={3} strokeLinecap="round" />,
+      <line
+        key={`b${i}`}
+        x1={px}
+        y1={py}
+        x2={nx}
+        y2={ny}
+        stroke={bClr}
+        strokeWidth={3}
+        strokeLinecap="round"
+      />,
     );
     items.push(atom(nx, ny, 4.5, cGrad));
-    px = nx; py = ny;
+    px = nx;
+    py = ny;
   }
 
-  if (count === 0) { px = sx; py = sy; }
+  if (count === 0) {
+    px = sx;
+    py = sy;
+  }
 
   const tx = px + Math.cos(angleRad) * 10;
   const ty = py + Math.sin(angleRad) * 10;
   items.push(
-    <line key="tm0" x1={px} y1={py} x2={tx} y2={ty} stroke={bhClr} strokeWidth={1.8} strokeLinecap="round" />,
+    <line
+      key="tm0"
+      x1={px}
+      y1={py}
+      x2={tx}
+      y2={ty}
+      stroke={bhClr}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+    />,
   );
   for (let j = 0; j < 3; j++) {
     const ha = angleRad + (j - 1) * 2.0;
     const hx = tx + Math.cos(ha) * 8;
     const hy = ty + Math.sin(ha) * 8;
     items.push(
-      <line key={`th${j}`} x1={tx} y1={ty} x2={hx} y2={hy} stroke={bhClr} strokeWidth={1.4} strokeLinecap="round" />,
+      <line
+        key={`th${j}`}
+        x1={tx}
+        y1={ty}
+        x2={hx}
+        y2={hy}
+        stroke={bhClr}
+        strokeWidth={1.4}
+        strokeLinecap="round"
+      />,
     );
     items.push(atom(hx, hy, 2.8, hGrad));
   }
@@ -98,9 +141,13 @@ export default function EsterMolecule3D({ alcoholName, oilName, abreviature }: E
     const visibleOil = Math.min(oilCarbons, 8);
     const visibleAlc = Math.min(carbons, 4);
 
-    const faC = "faC", faH = "faH";
-    const ohC = "ohC", ohH = "ohH";
-    const esC = "esC", esO = "esO", brO = "brO";
+    const faC = "faC",
+      faH = "faH";
+    const ohC = "ohC",
+      ohH = "ohH";
+    const esC = "esC",
+      esO = "esO",
+      brO = "brO";
 
     const grads = [
       grad(faC, "#7dd3fc", "#0284c7"),
@@ -113,7 +160,8 @@ export default function EsterMolecule3D({ alcoholName, oilName, abreviature }: E
     ];
 
     const els: React.ReactNode[] = [...grads];
-    const cx = 140, cy = 80;
+    const cx = 140,
+      cy = 80;
 
     /* Fatty acid chain */
     els.push(...chain(cx, cy, 3.0, visibleOil, faC, faH, "#38bdf8", "#7dd3fc"));
@@ -124,14 +172,36 @@ export default function EsterMolecule3D({ alcoholName, oilName, abreviature }: E
     els.push(atom(cx + 15, cy - 5, 4, esC));
     els.push(atom(cx + 5, cy - 20, 5.5, esO));
     els.push(
-      <text key="eo" x={cx + 5} y={cy - 26} fontSize={7} fill="#ef4444" fontFamily="Inter,sans-serif" fontWeight={700} textAnchor="middle">O</text>,
+      <text
+        key="eo"
+        x={cx + 5}
+        y={cy - 26}
+        fontSize={7}
+        fill="#ef4444"
+        fontFamily="Inter,sans-serif"
+        fontWeight={700}
+        textAnchor="middle"
+      >
+        O
+      </text>,
     );
 
     /* Bridge O */
     els.push(bnd(cx + 15, cy - 5, cx + 30, cy - 10, "#ef4444", 3.5));
     els.push(atom(cx + 30, cy - 10, 4.5, brO));
     els.push(
-      <text key="bo" x={cx + 30} y={cy - 17} fontSize={7} fill="#ef4444" fontFamily="Inter,sans-serif" fontWeight={700} textAnchor="middle">O</text>,
+      <text
+        key="bo"
+        x={cx + 30}
+        y={cy - 17}
+        fontSize={7}
+        fill="#ef4444"
+        fontFamily="Inter,sans-serif"
+        fontWeight={700}
+        textAnchor="middle"
+      >
+        O
+      </text>,
     );
 
     /* Alcohol chain */
@@ -139,11 +209,19 @@ export default function EsterMolecule3D({ alcoholName, oilName, abreviature }: E
 
     /* Top text: abbreviation + alcohol/oil */
     els.push(
-      <text key="abrev" x={10} y={20} fontSize={13} fill="var(--primary)" fontFamily="Outfit,sans-serif" fontWeight={700}>
+      <text
+        key="abrev"
+        x={10}
+        y={20}
+        fontSize={13}
+        fill="var(--primary)"
+        fontFamily="Outfit,sans-serif"
+        fontWeight={700}
+      >
         {abreviature}
       </text>,
       <text key="desc" x={10} y={34} fontSize={7} fill="#888" fontFamily="Inter,sans-serif">
-        Alcohol: {alcoholName}  Aceite: {oilName}
+        Alcohol: {alcoholName} Aceite: {oilName}
       </text>,
     );
 
@@ -161,7 +239,16 @@ export default function EsterMolecule3D({ alcoholName, oilName, abreviature }: E
       const yy = ly + i * 12;
       els.push(
         <circle key={`ld${i}`} cx={14} cy={yy + 2} r={3.5} fill={`url(#${gid})`} />,
-        <text key={`lt${i}`} x={24} y={yy + 5} fontSize={6.5} fill="#aaa" fontFamily="Inter,sans-serif">{label}</text>,
+        <text
+          key={`lt${i}`}
+          x={24}
+          y={yy + 5}
+          fontSize={6.5}
+          fill="#aaa"
+          fontFamily="Inter,sans-serif"
+        >
+          {label}
+        </text>,
       );
     });
 
@@ -173,12 +260,16 @@ export default function EsterMolecule3D({ alcoholName, oilName, abreviature }: E
       <svg viewBox={molecule.vb} className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="ms" x="-10%" y="-10%" width="120%" height="130%">
-            <feDropShadow dx={1.5} dy={2.5} stdDeviation={3.5} floodColor="#000" floodOpacity={0.4} />
+            <feDropShadow
+              dx={1.5}
+              dy={2.5}
+              stdDeviation={3.5}
+              floodColor="#000"
+              floodOpacity={0.4}
+            />
           </filter>
         </defs>
-        <g filter="url(#ms)">
-          {molecule.els}
-        </g>
+        <g filter="url(#ms)">{molecule.els}</g>
       </svg>
     </div>
   );

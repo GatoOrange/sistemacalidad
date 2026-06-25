@@ -83,7 +83,7 @@ export function generatePredictions(
         ? 1.05
         : catName.includes("etóxido") || catName === "c2h5ona" || catName === "c2h5ok"
           ? 1.02
-          : 0.90;
+          : 0.9;
 
   const yieldEst =
     Math.round(
@@ -105,15 +105,18 @@ export function generatePredictions(
         10,
     ) / 10;
 
-  const alcoholMap: Record<string, { densidad: number; viscosidad: number; inflamacion: number; calor: number }> = {
-    metanol:     { densidad: 882, viscosidad: 4.2, inflamacion: 135, calor: 38.5 },
-    etanol:      { densidad: 875, viscosidad: 4.8, inflamacion: 165, calor: 39.5 },
-    propanol:    { densidad: 870, viscosidad: 5.2, inflamacion: 170, calor: 40.0 },
+  const alcoholMap: Record<
+    string,
+    { densidad: number; viscosidad: number; inflamacion: number; calor: number }
+  > = {
+    metanol: { densidad: 882, viscosidad: 4.2, inflamacion: 135, calor: 38.5 },
+    etanol: { densidad: 875, viscosidad: 4.8, inflamacion: 165, calor: 39.5 },
+    propanol: { densidad: 870, viscosidad: 5.2, inflamacion: 170, calor: 40.0 },
     isopropanol: { densidad: 868, viscosidad: 5.5, inflamacion: 175, calor: 40.0 },
-    butanol:     { densidad: 865, viscosidad: 6.0, inflamacion: 180, calor: 40.5 },
-    pentanol:    { densidad: 862, viscosidad: 6.5, inflamacion: 185, calor: 41.0 },
-    hexanol:     { densidad: 860, viscosidad: 7.0, inflamacion: 190, calor: 41.5 },
-    octanol:     { densidad: 858, viscosidad: 8.0, inflamacion: 200, calor: 42.0 },
+    butanol: { densidad: 865, viscosidad: 6.0, inflamacion: 180, calor: 40.5 },
+    pentanol: { densidad: 862, viscosidad: 6.5, inflamacion: 185, calor: 41.0 },
+    hexanol: { densidad: 860, viscosidad: 7.0, inflamacion: 190, calor: 41.5 },
+    octanol: { densidad: 858, viscosidad: 8.0, inflamacion: 200, calor: 42.0 },
   };
   const alc = alcoholMap[alcohol] || alcoholMap.metanol;
   const densidadPredict = alc.densidad;
@@ -147,7 +150,9 @@ export function generatePredictions(
       unidad: "%",
       valorPredicho: yieldEst,
       biodieselReferencia: 96,
-      confianza: Math.round((80 + 10 * factTemp + 10 * factTime) / (acid > 2 ? 1.2 : 1) * pCatalizadorFactor),
+      confianza: Math.round(
+        ((80 + 10 * factTemp + 10 * factTime) / (acid > 2 ? 1.2 : 1)) * pCatalizadorFactor,
+      ),
       explicacion: `Estimado a partir de temperatura (${temp}°C), tiempo (${time}min), agitación (${agi}rpm), relación molar (${molRatio}:1), catalizador (${catNombre}) y calidad de materia prima.`,
     },
     {
@@ -155,7 +160,9 @@ export function generatePredictions(
       unidad: "%",
       valorPredicho: convEst,
       biodieselReferencia: 98,
-      confianza: Math.round((75 + 15 * factTemp + 10 * factTime) / (acid > 2 ? 1.2 : 1) * pCatalizadorFactor),
+      confianza: Math.round(
+        ((75 + 15 * factTemp + 10 * factTime) / (acid > 2 ? 1.2 : 1)) * pCatalizadorFactor,
+      ),
       explicacion: `Basado en condiciones de reacción, tipo de catalizador (${catNombre}) y pureza de reactivos. Correlación con rendimiento esperado.`,
     },
     {
@@ -209,7 +216,8 @@ export function generatePredictions(
     {
       parametro: "Estabilidad oxidativa",
       unidad: "h @110°C",
-      valorPredicho: alcohol === "metanol" ? 6 : alcohol === "etanol" ? 7 : alcohol === "isopropanol" ? 8 : 9,
+      valorPredicho:
+        alcohol === "metanol" ? 6 : alcohol === "etanol" ? 7 : alcohol === "isopropanol" ? 8 : 9,
       biodieselReferencia: 6,
       confianza: 75,
       explicacion: "La estabilidad oxidativa mejora con alcoholes superiores.",

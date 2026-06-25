@@ -48,12 +48,17 @@ export default class ErrorBoundary extends Component<Props, State> {
             <h1 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "0.5rem" }}>
               Algo sali&#243; mal
             </h1>
-            <p style={{ fontSize: "0.875rem", color: "#f87171", marginBottom: "0.25rem", fontWeight: 600 }}>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "#f87171",
+                marginBottom: "0.25rem",
+                fontWeight: 600,
+              }}
+            >
               {header}
             </p>
-            <p style={{ fontSize: "0.875rem", color: "#98969a", marginBottom: "1rem" }}>
-              {msg}
-            </p>
+            <p style={{ fontSize: "0.875rem", color: "#98969a", marginBottom: "1rem" }}>{msg}</p>
             {stack && (
               <pre
                 style={{
